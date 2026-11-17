@@ -15,7 +15,7 @@ nao significa `production_ready`.
 | `app-jboot-next-platform` | Frontend web modular Next.js de produtos | `functional` |
 | `app-jboot-pdv-mobile` | App React Native/Expo offline-first do PDV | `planned` |
 | `svc-jboot-fiscal` | Servico fiscal Laravel reutilizavel | `scaffolded` |
-| `svc-jboot-juridico-data` | Servico interno Python para dados juridicos oficiais | `planned` |
+| `svc-jboot-juridico-data` | Servico interno Python para dados juridicos oficiais | `functional` |
 | `svc-jboot-payments` | Servico interno Go provider-neutral de cobrancas | `in_progress` |
 | `svc-jboot-ai-gateway` | Cofre BYOK, agentes e execucao Anthropic/OpenAI | `in_progress` |
 | `wrk-jboot-juridico` | Workers Python/Playwright via Temporal | `functional` |
