@@ -12,29 +12,56 @@ is the English entry point. A Portuguese version is in
 
 ## What is in here
 
-| Area | Project | Stack |
+Every project and module declares a maturity state in its contract. The
+states, from the lifecycle in
+[docs/architecture/implementation-lifecycle.md](docs/architecture/implementation-lifecycle.md):
+
+- `planned`: scope and contract exist, no working runtime.
+- `scaffolded`: toolchain and structure exist, no complete working flow.
+- `in_progress`: a partial working implementation with known blocking work.
+- `functional`: the main flow has code and reproducible automated validation.
+- `production_ready`: full definition of done, with operation and rollback
+  validated.
+
+No project is marked `production_ready` yet. Production readiness is assessed
+separately from `functional`: Flow runs in production while its contract
+still records that assessment as pending.
+
+### Projects
+
+| Area | Project | Stack | Status |
+|---|---|---|---|
+| Identity | `bff-jboot-identity`: tenants, users, entitlements, JWT sessions per application | NestJS, PostgreSQL | `functional` |
+| Identity | `app-jboot-identity-admin`: global admin and post-login application selector | Next.js, React | `functional` |
+| Platform | `bff-jboot-platform`: modular monolith for business products | NestJS, PostgreSQL | `functional` |
+| Platform | `app-jboot-next-platform`: modular web front end for the same products | Next.js, React | `functional` |
+| Legal | `wrk-jboot-juridico`: court-system workers orchestrated by Temporal | Python, Playwright | `functional` |
+| Legal | `svc-jboot-juridico-data`: internal API over official court data (DataJud) | Python | `functional` |
+| AI | `svc-jboot-ai-gateway`: encrypted credentials, versioned agents, execution against Anthropic and OpenAI | NestJS | `in_progress` |
+| Payments | `svc-jboot-payments`: provider-neutral billing service | Go | `in_progress` |
+| Fiscal | `svc-jboot-fiscal`: reusable fiscal document service; blocked until external tax-authority certification | Laravel | `scaffolded` |
+| Point of sale | `app-jboot-pdv-mobile`: offline-first mobile point of sale | React Native, Expo | `planned` |
+| Operations | `ops-jboot-observability`: OpenTelemetry and Grafana LGTM | Docker | `functional` |
+| Public sites | `site-jboot-landing`, `site-joao-buti-portfolio` | Next.js, Astro | `functional` |
+
+### Platform modules
+
+A module is selected at login and its session carries that application in
+the JWT, so the navigation and API scopes are limited to it. Modules live in
+`implementations/bff-jboot-platform/modules` and
+`implementations/app-jboot-next-platform/modules`.
+
+| Module | Purpose | Status |
 |---|---|---|
-| Identity | `bff-jboot-identity`: tenants, users, entitlements, JWT sessions per application | NestJS, PostgreSQL |
-| Identity | `app-jboot-identity-admin`: global admin and post-login application selector | Next.js, React |
-| Platform | `bff-jboot-platform`: modular monolith for business products | NestJS, PostgreSQL |
-| Platform | `app-jboot-next-platform`: modular web front end for the same products | Next.js, React |
-| AI | `svc-jboot-ai-gateway`: encrypted credentials, versioned agents, execution against Anthropic and OpenAI | NestJS |
-| Legal | `wrk-jboot-juridico`: court-system workers orchestrated by Temporal | Python, Playwright |
-| Payments | `svc-jboot-payments`: provider-neutral billing service | Go |
-| Fiscal | `svc-jboot-fiscal`: reusable fiscal document service | Laravel |
-| Operations | `ops-jboot-observability`: OpenTelemetry and Grafana LGTM | Docker |
-| Public sites | `site-jboot-landing`, `site-joao-buti-portfolio` | Next.js, Astro |
-
-Platform modules (`implementations/bff-jboot-platform/modules`) include the
-Flow kanban with AI automations, point of sale, process monitoring with
-official court data, customer records and file storage. A module is selected
-at login and its session carries that application in the JWT, so the
-navigation and API scopes are limited to it.
-
-Each project declares a maturity state in its `PROJECT_CONTRACT.md`
-(`planned`, `scaffolded`, `in_progress`, `functional`, `production_ready`).
-The presence of code does not mean a project is production ready; the
-inventory is in [implementations/README.md](implementations/README.md).
+| `kanban` | Flow: boards and cards with real-time sync and configurable AI automations per column | `functional` |
+| `pdv` | Point of sale | `functional` |
+| `juridico` | Legal intake, court credentials, case lookups and monitoring through Temporal workers | `functional` |
+| `catalog` | Products and categories | `functional` |
+| `establishment-customers` | End customers of a tenant's business, shared by point of sale and ordering | `functional` |
+| `platform-files` | File upload, metadata and signed retrieval for other modules | `functional` |
+| `process-monitoring` | Court case monitoring from official sources (DataJud, DJEN) | `in_progress` |
+| `domain-integrations` | Cross-module flows, such as court data feeding Flow cards | `in_progress` |
+| `comanda` | Self-service table ordering by QR code | `scaffolded` |
 
 ## Engineering approach
 
