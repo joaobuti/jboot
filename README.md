@@ -1,102 +1,82 @@
 # JBoot
 
-Hub multiproduto com arquitetura modular e engenharia governada por IA.
+A multi-tenant platform with shared identity and modular business products,
+built and operated by [João Buti](https://portfolio.jboot.com.br/en/) through
+JBoot Studio. Its Flow legal automation module runs in production for one
+external customer.
 
-## Objetivo
+This repository is the public copy of the working monorepo. Most contracts,
+architecture records and code comments are written in Portuguese; this README
+is the English entry point. A Portuguese version is in
+[README.pt-BR.md](README.pt-BR.md).
 
-O repositorio concentra Identity, Platform modular, sites, apps, servicos,
-workers e infraestrutura compartilhada. IA e parte central do processo de
-engenharia e governanca; o runtime de IA dos produtos permanece planejado e
-deve ser ativado somente pelo gate descrito em `src/ai/README.md`.
+## What is in here
 
-## Estado Atual
+| Area | Project | Stack |
+|---|---|---|
+| Identity | `bff-jboot-identity`: tenants, users, entitlements, JWT sessions per application | NestJS, PostgreSQL |
+| Identity | `app-jboot-identity-admin`: global admin and post-login application selector | Next.js, React |
+| Platform | `bff-jboot-platform`: modular monolith for business products | NestJS, PostgreSQL |
+| Platform | `app-jboot-next-platform`: modular web front end for the same products | Next.js, React |
+| AI | `svc-jboot-ai-gateway`: encrypted credentials, versioned agents, execution against Anthropic and OpenAI | NestJS |
+| Legal | `wrk-jboot-juridico`: court-system workers orchestrated by Temporal | Python, Playwright |
+| Payments | `svc-jboot-payments`: provider-neutral billing service | Go |
+| Fiscal | `svc-jboot-fiscal`: reusable fiscal document service | Laravel |
+| Operations | `ops-jboot-observability`: OpenTelemetry and Grafana LGTM | Docker |
+| Public sites | `site-jboot-landing`, `site-joao-buti-portfolio` | Next.js, Astro |
 
-- `AI-first engineering`: conformant por contrato executavel, schemas, agents,
-  skills, contexto deterministico, preflight diff-aware, evals, attestations,
-  seguranca e adapters. O claim vale quando `make ai-conformance` estiver verde;
-  consulte `docs/ai-governance/evidence/AI_FIRST_EVIDENCE.md`.
-- `AI product runtime`: planejado; ainda nao existem providers ou chamadas de
-  modelos implementadas na camada raiz `src/ai`.
-- implementacoes: inventariadas em `implementations/README.md`, com maturidade
-  definida por `docs/architecture/implementation-lifecycle.md`.
+Platform modules (`implementations/bff-jboot-platform/modules`) include the
+Flow kanban with AI automations, point of sale, process monitoring with
+official court data, customer records and file storage. A module is selected
+at login and its session carries that application in the JWT, so the
+navigation and API scopes are limited to it.
 
-`functional` e `production_ready` sao estados diferentes. Consulte o contrato
-do projeto antes de inferir maturidade pela presenca de codigo.
+Each project declares a maturity state in its `PROJECT_CONTRACT.md`
+(`planned`, `scaffolded`, `in_progress`, `functional`, `production_ready`).
+The presence of code does not mean a project is production ready; the
+inventory is in [implementations/README.md](implementations/README.md).
 
-## Regra de ouro
+## Engineering approach
 
-Toda decisao deve considerar um operador de nivel SENIOR em linguagens de programacao, analise, arquitetura, seguranca, operacao e qualquer outro aspecto envolvido na area de atuacao do que for requisitado.
+- **Contracts before code.** Every project and module has a contract with its
+  stack, boundaries, entry points and validation commands. AI agents and
+  people read the contract of the target before changing it.
+- **Governed AI-assisted engineering.** 13 blocking CI controls check the
+  governance contract, agent context freshness, behavioral evaluations
+  (positive and negative), execution records and adapter coverage
+  (`make ai-conformance`).
+- **Architecture graph.** Nodes and relationships are generated from
+  contracts, architecture records and the API catalog
+  (`tools/ai/architecture-graph.py`). A CI gate fails when the graph and its
+  sources disagree, such as an edge pointing to a missing node.
+- **HTTP contract graph.** Routes, DTOs and their consumers are extracted from
+  the code (`tools/ai/api-graph.py`), so an API change lists the affected
+  callers before it is made.
+- **Architecture decisions** are recorded in
+  [docs/architecture/decisions](docs/architecture/decisions).
 
-Isso significa que o projeto deve priorizar profundidade tecnica, controle fino, rastreabilidade, extensibilidade, explicabilidade e capacidade de auditoria. Interfaces, automacoes e agentes devem ser eficientes para usuarios experientes, sem esconder informacao critica ou simplificar decisoes importantes alem do aceitavel.
+## Running it
 
-## Estrutura
-
-```text
-docs/
-  agents/                Orquestracao global e referencias de stack
-  architecture/          Decisoes estruturais do hub de implementacoes
-  infra/                 Infra local e containers Docker
-  stacks/                Recomendacoes tecnicas por plataforma
-  decision-principles.md  Principios de decisao do projeto
-  ai-architecture.md      Arquitetura, padroes e guardrails de IA
-  product-brief.md        Visao inicial do produto
-src/
-  ai/                     Orquestracao de modelos, prompts, agentes e avaliacao
-  app/                    Camada de aplicacao
-  core/                   Dominio e regras centrais
-  integrations/           APIs externas e conectores
-tests/                    Testes automatizados
-```
-
-Implementacoes reais ficam em `implementations/<project>`. Cada projeto deve ter `PROJECT_CONTRACT.md`, `agents/*` e `skills/*` para que execucoes usem contexto local e economizem tokens.
-
-## Principios iniciais
-
-- Decisoes devem assumir operadores SENIOR como publico operacional padrao.
-- IA deve ser observavel: logs, custos, latencia, modelos usados e resultados relevantes devem ser rastreaveis.
-- Prompts e ferramentas devem ser versionados como codigo.
-- Saidas de IA que afetam usuarios, dinheiro, saude, juridico ou operacoes criticas precisam de validacao explicita.
-- O projeto deve suportar troca de modelos e provedores sem reescrever a aplicacao.
-- Dados sensiveis devem ser minimizados antes de chegar a qualquer provedor externo.
-
-## Proximos passos tecnicos do runtime de IA
-
-1. Aprovar o primeiro caso de uso de IA em runtime e seu impacto operacional.
-2. Registrar ADR de provider/stack, dados, retencao e observabilidade.
-3. Implementar a primeira integracao exclusivamente em `src/ai`.
-4. Criar testes e evals automatizados antes de habilitar o fluxo em producao.
-5. Medir modelo, prompt version, custo, latencia, status e falhas.
-
-## Infra local
-
-Veja `docs/infra/docker.md`.
-
-Atalhos:
+Development runs in Docker; tests, type checks and builds run inside the
+`jboot` container, not on the host.
 
 ```bash
-make infra-up
-make shell
-```
-
-## Governanca De IA
-
-Antes de iniciar implementacao funcional em `implementations/*`, rode:
-
-```bash
+make code-up TARGET=<project-or-module>
 make ai-check
 ```
 
-Esse comando executa os validadores/evals locais da arquitetura de IA:
+Production runs on a single VPS behind Caddy with automatic TLS, deployed
+from GitLab CI by image tag (`deploy/vps`).
 
-- adapters de runtime;
-- contratos e modules;
-- preflight com `Agent Activation`;
-- checks de governanca.
+## About this public copy
 
-Para consultar os indicadores consolidados:
+This copy is exported from the private GitLab repository by
+`tools/github-export/export.sh`, with its own history. The export removes
+personal data, test spreadsheets and the commercial UI template the web apps
+are based on (Velzon), including its demo pages. Parts of the web apps still
+use that template's components and assets.
 
-```bash
-make ai-report
-```
+## Contact
 
-CI sera tratado depois; por enquanto esta e a rotina local recomendada.
+[Portfolio](https://portfolio.jboot.com.br/en/) ·
+[LinkedIn](https://www.linkedin.com/in/butijoao/)

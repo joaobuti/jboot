@@ -13,6 +13,8 @@
 #   - arquivos acima de 100 MB nao sobem;
 #   - o template Velzon completo fica no .gitignore e fora da copia;
 #   - paginas de demonstracao do Velzon nos apps ficam de fora (exclude.txt);
+#   - README.md da copia = tools/github-export/README.md (ingles); o README
+#     de trabalho vai como README.pt-BR.md;
 #   - o push usa a chave dedicada do Host `github-joaobuti` (~/.ssh/config).
 # Qualquer verificacao que falhe aborta antes do commit.
 set -euo pipefail
@@ -51,10 +53,15 @@ find "$STAGE" -type f -size +100M -print -delete | sed 's#^#removido (>100 MB): 
 grep -rlIZ -e "$CPF_REAL" -e "$CPF_REAL_FMT" "$STAGE" | xargs -0 -r sed -i \
   -e "s/$CPF_REAL/$CPF_FAKE/g" -e "s/${CPF_REAL_FMT//./\\.}/$CPF_FAKE_FMT/g"
 
-# 4. .gitignore da copia
+# 4. README publico em ingles; o README de trabalho vira README.pt-BR.md
+mv "$STAGE/README.md" "$STAGE/README.pt-BR.md"
+sed -i '1a\\n> English version: [README.md](README.md)' "$STAGE/README.pt-BR.md"
+cp "$STAGE/tools/github-export/README.md" "$STAGE/README.md"
+
+# 5. .gitignore da copia
 printf '\n# Template Velzon completo: fora da copia publica (licenca).\nimplementations/templates/original/\n' >> "$STAGE/.gitignore"
 
-# 5. verificacoes bloqueantes
+# 6. verificacoes bloqueantes
 fail=0
 check() { if [[ -n "$2" ]]; then echo "BLOQUEIO: $1"; echo "$2" | head -10; fail=1; fi; }
 check "CPF real presente" "$(grep -rlI -e "$CPF_REAL" -e "$CPF_REAL_FMT" -e '030\.319' "$STAGE" || true)"
@@ -67,7 +74,7 @@ check "arquivo .env real" "$(find "$STAGE" -type f -name '.env*' ! -name '*.exam
 if (( fail )); then echo "exportacao abortada"; exit 1; fi
 echo "verificacoes ok: $(find "$STAGE" -type f | wc -l) arquivos, $(du -sh "$STAGE" | cut -f1)"
 
-# 6. repositorio da copia
+# 7. repositorio da copia
 if [[ ! -d "$OUT/.git" ]]; then
   mkdir -p "$OUT"
   git -C "$OUT" init -q -b main
