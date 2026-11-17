@@ -1,0 +1,63 @@
+schema_version: "1.0.0"
+execution_id: "20260804-tooling-ai-mr-check-v1"
+date: "2026-08-04"
+mode: governance
+status: success
+runtime: claude-code-vscode
+model: claude-opus-5
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+scope_paths:
+  - Makefile
+  - tools/ai/record-execution.sh
+  - docs/ai-governance
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-governance/attestations/README.md
+  - docs/skills/ai-first-governance/SKILL.md
+instruction_set_sha256: "86e23667edac54c23afa4aef24599a9eef963ecd33cf35d88c0c8c698355641e"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    usuario relatou a reprovacao do pipeline no merge request e aprovou a correcao
+    em tres camadas (attestations, ferramental e higiene de branch)
+root_cause:
+  pipeline_job: ai-governance
+  failures:
+    - revision working-tree nas attestations 2026-08-03-ops-jboot-observability e
+      2026-08-04-juridico-pje-comunica, rejeitado por diff-preflight como marcacao local-only
+    - diff do merge request com 334 arquivos de tres execucoes empilhadas, fora do
+      scope_paths da attestation selecionada
+    - scope_paths da attestation do PJe omitia arquivos gerados e tocados pela propria
+      execucao (AI_CONTEXT.md, pyproject.toml, uv.lock, workers/main.py, juridico.module.ts,
+      BrowserTitle.tsx, LayoutMenuData.tsx)
+  tooling_gap: >-
+    make ai-diff-check roda diff-preflight com --allow-working-tree-revision e sem --base,
+    entao nunca reproduz o gate do merge request; nao havia alvo equivalente ao do CI
+security_review:
+  status: not_applicable
+  evidence:
+    - mudanca restrita a metadados de governanca, alvo Makefile e script de registro
+    - nenhum endpoint, credencial, query ou dependencia de runtime afetada
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-check
+  - make ai-mr-check BASE=origin/main
+result: >-
+  Gate de merge request corrigido: attestations passam a declarar revision resolved_by_ci
+  conforme o README ja exigia, o scope_paths do PJe cobre todo o diff da execucao, o alvo
+  make ai-mr-check reproduz localmente a verificacao do CI e as duas armadilhas do
+  validador (cobertura de arquivos gerados e selecao da attestation por ordem alfabetica)
+  ficam documentadas

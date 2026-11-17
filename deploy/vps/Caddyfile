@@ -1,0 +1,84 @@
+# Reverse proxy de producao do JBoot (servico `edge` do docker-compose.prod.yml).
+# TLS automatico (Let's Encrypt) por host; cada host so emite certificado depois
+# que o registro A na Configr aponta para o VPS. Antes disso, testar com
+# `curl --resolve <host>:443:187.53.112.180 https://<host>/`.
+#
+# JBOOT_CADDY_TLS_MODE=local_certs (no .env) usa a CA interna do Caddy em vez da
+# Let's Encrypt: serve para validar o VPS antes da virada de DNS sem gastar
+# tentativas de ACME. Vazio = Let's Encrypt (producao).
+{
+	email {$JBOOT_ACME_EMAIL}
+	{$JBOOT_CADDY_TLS_MODE}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+{$JBOOT_LANDING_HOST} {
+	import common
+	reverse_proxy landing:8080
+}
+
+www.{$JBOOT_LANDING_HOST} {
+	redir https://{$JBOOT_LANDING_HOST}{uri} permanent
+}
+
+{$JBOOT_PORTFOLIO_HOST} {
+	import common
+	reverse_proxy portfolio:8080
+}
+
+{$JBOOT_APP_HOST} {
+	import common
+	reverse_proxy platform-web:3000
+}
+
+{$JBOOT_ADMIN_HOST} {
+	import common
+	reverse_proxy identity-admin:3000
+}
+
+{$JBOOT_AUTH_HOST} {
+	import common
+	reverse_proxy identity-api:8000
+}
+
+# Platform API: inclui WebSocket (socket.io) e o endpoint MCP do conector Claude.
+{$JBOOT_PLATFORM_API_HOST} {
+	import common
+	request_body {
+		max_size 50MB
+	}
+	reverse_proxy platform-api:8010
+}
+
+{$JBOOT_AI_API_HOST} {
+	import common
+	reverse_proxy ai-gateway:8050
+}
+
+# Webhooks do provedor de pagamento (PAYMENTS_PUBLIC_BASE_URL).
+{$JBOOT_PAYMENTS_HOST} {
+	import common
+	reverse_proxy payments-api:8040
+}
+
+# Downloads/uploads por URL pre-assinada do S3 (S3_PUBLIC_ENDPOINT). O Host
+# precisa chegar intacto ao MinIO porque faz parte da assinatura.
+{$JBOOT_FILES_HOST} {
+	request_body {
+		max_size 100MB
+	}
+	reverse_proxy minio:9000
+}

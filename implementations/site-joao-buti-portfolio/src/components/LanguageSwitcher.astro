@@ -1,0 +1,19 @@
+---
+import { casePath, shared } from "../content/site-data.mjs";
+
+const { label, locale, caseId } = Astro.props;
+---
+
+<nav class="language-switcher" aria-label={label}>
+  {shared.locales.map((item) => (
+    <a
+      href={caseId ? casePath(item.code, caseId) : item.path}
+      hreflang={item.lang}
+      lang={item.lang}
+      aria-label={item.name}
+      aria-current={item.code === locale ? "page" : undefined}
+    >
+      {item.label}
+    </a>
+  ))}
+</nav>

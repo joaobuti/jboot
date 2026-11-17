@@ -1,0 +1,115 @@
+schema_version: "1.0.0"
+execution_id: "20261004-payments-sprint-1-foundation-v1"
+date: "2026-10-04"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-payments
+target_module: null
+scope_paths:
+  - .claude/CLAUDE.md
+  - .codex.d/AGENTS.md
+  - .cursor/rules/jboot-ai-architecture.mdc
+  - .docker/jboot/Dockerfile
+  - .github/copilot-instructions.md
+  - AGENTS.md
+  - Makefile
+  - docker-compose.yml
+  - docker/postgres/init/058_payments.sql
+  - docs/ai-governance
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands
+  - docs/agents/orchestration
+  - docs/api/payments-sprint-1-openapi.yaml
+  - docs/architecture/decisions/011-payments-service-go.md
+  - docs/architecture/decisions/012-infinitepay-pilot.md
+  - docs/architecture/implementation-contracts.md
+  - docs/data/payments-sprint-1-data-model.md
+  - docs/product
+  - docs/runbooks/payments-foundation.md
+  - docs/security/payments-sprint-1-security-checklist.md
+  - docs/security/payments-threat-model.md
+  - implementations/bff-jboot-identity
+  - implementations/README.md
+  - implementations/svc-jboot-juridico-data
+  - implementations/svc-jboot-payments
+  - tools/ai
+  - tools/code-down.sh
+  - tools/code-up.sh
+instruction_sources:
+  - AGENTS.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-new-module.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/stacks/backend-go.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+instruction_set_sha256: "faaaa7ae8a429dc3fb688d87b1d3f38fd850c2d146d7a9d2cfb00b3932089a8d"
+context_sha256:
+  implementations/svc-jboot-juridico-data/AI_CONTEXT.md: "48bae70bbd0e87613550c537bb9b7644e82c1257719bfa64fc4c31b2461149c8"
+  implementations/svc-jboot-payments/AI_CONTEXT.md: "8a7e5dfcea5702f99c25fe9defe7cd25120cf431a76bdc2e404df32598088a36"
+agents:
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+human_approval:
+  status: approved
+  evidence: >-
+    Depois do preflight PO, PE e Architect e da revisao final da Sprint 0, o
+    usuario confirmou em 2026-10-04 a materializacao da Sprint 1 como fundacao
+    independente em Go. A autorizacao exclui deploy, producao, ativacao de
+    clientes, cobranca comercial e adapter InfinitePay production-ready.
+security_review:
+  status: passed
+  evidence:
+    - checklist preenchido em docs/security/payments-sprint-1-security-checklist.md
+    - JWT s2s valida algoritmo, issuer, audience, type e caller allowlisted
+    - capability e tenant sao verificados independentemente e queries incluem client_id
+    - DTO explicito rejeita campos desconhecidos e limita body a 16 KiB
+    - imagem distroless roda nonroot e govulncheck nao encontrou simbolo chamado vulneravel
+    - nenhuma credencial InfinitePay, PII de pagador ou secret local foi versionado
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - go test -race ./... dentro do container, incluindo PostgreSQL e concorrencia
+  - go vet ./... e go build ./cmd/api ./cmd/worker dentro do container
+  - testes e typecheck do Identity dentro do container
+  - smoke Identity para JWT svc:payments e POST/GET de cobranca aprovado
+  - outbox transacional publicado pelo worker
+  - imagem Docker Go 1.25.13 distroless/nonroot construida
+  - govulncheck ./... sem vulnerabilidade em simbolo chamado
+  - docker compose config e bash -n aprovados
+  - 37 avaliacoes comportamentais aprovadas
+  - make ai-context e make ai-conformance
+  - 46 testes do grafo HTTP, incluindo Go/OpenAPI
+  - make ai-api-context MODULE=svc-jboot-payments com quatro rotas, handlers e DTOs
+  - make ai-api-impact e make ai-api-graph-gate aprovados
+result: >-
+  A fundacao provider-neutral do Payments foi materializada com API e worker em
+  Go, PostgreSQL dedicado, JWT s2s, capability payments, isolamento por tenant,
+  idempotencia concorrente, maquina de estados, transactional outbox,
+  health/readiness, OpenTelemetry, runtime minimo e testes automatizados. O
+  fluxo s2s real no ambiente local foi aprovado. O grafo HTTP foi integrado e
+  ampliado para Go net/http, consumidores Go e reconciliacao OpenAPI; as quatro
+  rotas do Payments passam pelo gate sem drift. Adapter InfinitePay, capacidade
+  medida, hardening BYOA e demais gates de producao seguem fora da Sprint 1.

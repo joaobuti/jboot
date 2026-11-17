@@ -1,0 +1,78 @@
+schema_version: "1.0.0"
+execution_id: "20260815-site-jboot-landing-ai-first-home-v1"
+date: "2026-08-15"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5.6-sol
+revision: resolved_by_ci
+target_project: implementations/site-jboot-landing
+target_module: null
+scope_paths:
+  - docs/ai-governance/evidence
+  - docs/deploy.md
+  - docs/ai-governance/attestations/2026-08-15-site-jboot-landing-ai-first-home.yaml
+  - implementations/site-jboot-landing/AI_CONTEXT.md
+  - implementations/site-jboot-landing/PROJECT_CONTRACT.md
+  - implementations/site-jboot-landing/next-env.d.ts
+  - implementations/site-jboot-landing/src
+  - implementations/site-jboot-landing/tests/landing-contract.test.mjs
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/agents/orchestration/marketing-brand.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - implementations/site-jboot-landing/PROJECT_CONTRACT.md
+  - implementations/site-jboot-landing/agents/frontend-engineer.md
+  - implementations/site-jboot-landing/agents/qa-engineer.md
+  - implementations/site-jboot-landing/skills/frontend-project-bootstrap.md
+  - implementations/site-jboot-landing/skills/seo-baseline.md
+  - implementations/site-jboot-landing/skills/qa-web-smoke.md
+  - implementations/site-jboot-landing/skills/deploy-contract.md
+instruction_set_sha256: "b3d462bdec0a9d46729f108c003a22538910d461f2be7d589ace5e34f596328c"
+context_sha256:
+  implementations/site-jboot-landing/AI_CONTEXT.md: "153fe4304494cb0b2456496d9c4613f7c8b25e3c0472caec45eefd168ebccef6"
+agents:
+  - docs/agents/orchestration/marketing-brand.md
+  - docs/agents/orchestration/product-engineer.md
+  - implementations/site-jboot-landing/agents/frontend-engineer.md
+  - implementations/site-jboot-landing/agents/qa-engineer.md
+  - implementations/site-jboot-landing/agents/devops-engineer.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - implementations/site-jboot-landing/skills/frontend-project-bootstrap.md
+  - implementations/site-jboot-landing/skills/seo-baseline.md
+  - implementations/site-jboot-landing/skills/qa-web-smoke.md
+  - implementations/site-jboot-landing/skills/deploy-contract.md
+human_approval:
+  status: approved
+  evidence: >-
+    Usuario solicitou promover os arquivos anexados para a rota raiz, preservar a home anterior
+    em /v6 e autorizou adequar informacoes simuladas conforme os contratos do repositorio.
+security_review:
+  status: not_applicable
+  evidence:
+    - mudanca restrita a site estatico, sem endpoints, auth, queries, storage, dependencias ou coleta de dados
+    - pipeline e simulacao local no navegador e nao transmite o arquivo selecionado
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-check
+  - npm run type-check com Node.js 24 (passou)
+  - npm run lint com Node.js 24 (passou)
+  - npm run test com Node.js 24 (6 testes passaram)
+  - npm run build com Node.js 22 Linux (static export; rotas / e /v2 a /v6)
+  - smoke visual desktop e mobile no artefato estatico
+  - pipeline interativo hidratado sem erros de console
+  - GET /v6 com canonical proprio e noindex, nofollow
+result: >-
+  Home hub adaptada dos arquivos TanStack/Tailwind para Next.js e CSS escopado, com claims
+  publicos alinhados aos contratos, pipeline local interativo em / e a versao AI-first anterior
+  preservada integralmente em /v6.

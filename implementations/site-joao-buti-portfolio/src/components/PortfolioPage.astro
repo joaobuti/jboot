@@ -1,0 +1,150 @@
+---
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import { casePath, pages, shared } from "../content/site-data.mjs";
+
+type Locale = keyof typeof pages;
+const { page, locale } = Astro.props as { page: (typeof pages)[Locale]; locale: Locale };
+const sectionIdsByLocale = {
+  pt: ["perfil", "ai-first", "cases", "experiencia", "stack", "contato"],
+  en: ["profile", "ai-first", "cases", "experience", "stack", "contact"],
+  es: ["perfil", "ai-first", "cases", "experiencia", "stack", "contacto"],
+};
+const sectionIds = sectionIdsByLocale[locale];
+const [leadSignal, ...supportingSignals] = page.signals;
+const navItems = [0, 2, 3, 1, 4, 5].map((index) => ({
+  label: page.nav[index],
+  id: sectionIds[index],
+}));
+const contactLinks = [
+  { label: page.contact.email, href: shared.emailHref },
+  { label: page.contact.linkedin, href: shared.linkedin },
+  { label: page.contact.whatsapp, href: shared.whatsapp },
+];
+---
+
+<div class="site-shell">
+  <header class="topbar">
+    <a class="brand-mark" href={page.path} aria-label={shared.name}>JB</a>
+    <nav class="nav-links" aria-label={page.labels.navigation}>
+      {navItems.map((item) => <a href={`#${item.id}`}>{item.label}</a>)}
+    </nav>
+    <LanguageSwitcher label={page.labels.languages} locale={locale} />
+  </header>
+
+  <main>
+    <section class="hero" id={sectionIds[0]}>
+      <div class="hero-copy">
+        <h1>{shared.name}</h1>
+        <p class="hero-title">{page.hero.title}</p>
+        <a class="hero-proof" href={casePath(locale, "cconet")}>
+          <strong>{leadSignal.value}</strong>
+          <span>{leadSignal.label}</span>
+        </a>
+        <p class="hero-summary">{page.hero.summary}</p>
+        <p class="profile-line">{page.hero.profile}</p>
+        <div class="hero-actions">
+          <a class="button-primary" href="#cases">{page.hero.primaryCta}</a>
+          <a class="button-secondary" href={`#${sectionIds[3]}`}>{page.hero.secondaryCta}</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <img src={shared.heroImage} alt="" width="1440" height="768" loading="eager" fetchpriority="high" />
+      </div>
+    </section>
+
+    <section class="signal-strip" aria-label={page.labels.highlights}>
+      {supportingSignals.map((signal) => (
+        <article>
+          <strong>{signal.value}</strong>
+          <span>{signal.label}</span>
+        </article>
+      ))}
+    </section>
+
+    <section class="section" id="cases">
+      <div class="section-heading">
+        <h2>{page.cases.title}</h2>
+      </div>
+      <div class="case-grid">
+        {page.cases.items.map((item) => (
+          <article class="case-card">
+            <p class="case-type">{item.type}</p>
+            <h3>{item.name}</h3>
+            <p>{item.summary}</p>
+            {item.stack.length > 0 && (
+              <div class="tag-list">
+                {item.stack.map((tag) => <span>{tag}</span>)}
+              </div>
+            )}
+            <a class="case-link" href={casePath(locale, item.id)} aria-label={`${page.labels.viewCase} · ${item.name}`}>
+              {page.labels.viewCase} <span aria-hidden="true">→</span>
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section split-section" id={sectionIds[3]}>
+      <div class="section-heading sticky-heading">
+        <h2>{page.experience.title}</h2>
+        <p class="profile-line">{page.experience.education}</p>
+      </div>
+      <div class="timeline">
+        {page.experience.items.map((item) => (
+          <article class="timeline-item">
+            <span>{item.period}</span>
+            <h3>{item.role}</h3>
+            <p class="company">{item.company}</p>
+            <p>{item.detail}</p>
+            {item.caseId && (
+              <a class="case-link" href={casePath(locale, item.caseId)} aria-label={`${page.labels.viewCase} · ${item.company}`}>
+                {page.labels.viewCase} <span aria-hidden="true">→</span>
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="section architecture" id="ai-first">
+      <div class="section-heading">
+        <h2>{page.aiFirst.title}</h2>
+      </div>
+      <div class="architecture-grid">
+        <div>
+          <p>{page.aiFirst.body}</p>
+          <a class="case-link" href={casePath(locale, "jboot")}>{page.labels.viewCase} JBoot <span aria-hidden="true">→</span></a>
+        </div>
+        <ul>
+          {page.aiFirst.points.map((point) => <li>{point}</li>)}
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" id="stack">
+      <div class="section-heading">
+        <h2>{page.stack.title}</h2>
+      </div>
+      <div class="stack-grid">
+        {page.stack.groups.map((group) => (
+          <article class="stack-card">
+            <h3>{group.name}</h3>
+            <div class="tag-list">
+              {group.items.map((item) => <span>{item}</span>)}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  </main>
+
+  <footer class="contact-section" id={sectionIds[5]}>
+    <div>
+      <h2>{page.contact.title}</h2>
+      <p>{page.contact.body}</p>
+    </div>
+    <div class="contact-actions">
+      {contactLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+    </div>
+  </footer>
+</div>

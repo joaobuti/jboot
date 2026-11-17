@@ -1,0 +1,62 @@
+schema_version: "1.0.0"
+execution_id: "20261015-openai-provider"
+date: "2026-10-15"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-6
+revision: "34e0db626 plus OpenAI increment"
+target_project: implementations/svc-jboot-ai-gateway
+target_module: null
+scope_paths:
+  - implementations/svc-jboot-ai-gateway
+  - implementations/app-jboot-next-platform/src/lib/ai-gateway-api.spec.ts
+  - implementations/app-jboot-next-platform/src/modules/kanban/components/ai/AiAgentsPage.tsx
+  - docker/postgres/init/076_ai_gateway_openai_catalog.sql
+  - docker-compose.yml
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+instruction_set_sha256: "1db3993ad587f13eeb6588f42b612bb180f8fe895c860946e8e91f34aeafe3f9"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "5906f207524f1711c486ca0d815732bb5c93587b77341fe557020ecdc301b55d"
+agents:
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: Usuario solicitou implementar OpenAI apos confirmar o fluxo Anthropic.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/ai-gateway-openai-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 26 testes gateway aprovados no container
+  - gateway typecheck lint build e audit omit dev aprovados
+  - 108 testes frontend e type-check aprovados no container
+  - builds finais gateway e frontend aprovados no container do checkout integrado
+  - catalogo autenticado HTTP 200 com anthropic e openai; readiness HTTP 200
+  - make ai-check aprovado apos corrigir registro do gateway em implementations README
+  - API Contract Graph sem erros
+  - ai-conformance com 39 cenarios e 56 testes aprovado
+result: >-
+  Adapter OpenAI Models e Responses implementado com SDK oficial, registry
+  fechado e isolamento BYOK. Sem login ChatGPT, fallback silencioso, logging
+  de segredo ou fixture fabricada de sucesso externo. Smoke real pendente de
+  chave do usuario pela UI. Inferencia continua sujeita a politica/allowlist.

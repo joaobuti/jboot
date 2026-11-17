@@ -1,0 +1,112 @@
+schema_version: 1.0.0
+execution_id: 20261106-flow-process-import
+date: '2026-11-06'
+mode: implementation
+status: partial
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+- docker/postgres/init/120_kanban_process_imports.sql
+- docker/postgres/init/121_juridico_flow_exports_import_origin.sql
+- implementations/bff-jboot-platform/src/modules/kanban/process-import
+- implementations/bff-jboot-platform/src/modules/kanban/kanban.module.ts
+- implementations/bff-jboot-platform/src/modules/kanban/initial-petitions/petition-protocol.repository.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/card-visibility.static.spec.ts
+- implementations/bff-jboot-platform/src/modules/domain-integrations
+- implementations/app-jboot-next-platform/src/modules/kanban
+- implementations/app-jboot-next-platform/src/app/(with-layout)/flow/importar-processos
+- implementations/app-jboot-next-platform/src/layouts/Layouts/LayoutMenuData.tsx
+- implementations/bff-jboot-platform/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/AI_CONTEXT.md
+- implementations/bff-jboot-platform/modules/kanban
+- implementations/app-jboot-next-platform/modules/kanban
+- implementations/bff-jboot-platform/modules/domain-integrations
+- docs/product/flow-process-import-sprints.md
+- docs/api/flow-process-import-openapi.yaml
+- docs/security/flow-process-import-checklist.md
+- docs/architecture-graph/registry.yaml
+- docs/ai-governance/attestations/2026-11-06-flow-process-import.yaml
+- docs/ai-governance/evidence
+instruction_sources:
+- AGENTS.md
+- docs/AI-COMMANDS.md
+- docs/ai-commands/jboot-implement-feature.md
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/domain-integrations/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/bff-jboot-platform/modules/domain-integrations/agents/domain-integrations.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/modules/domain-integrations/skills/domain-flow-import.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+instruction_set_sha256: 76ffb6c6e20f7fa54563c8f4b983bae25f385b0489ff33972a36f15802cd17a1
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: b847ce4930c0426244b0b187e18966bf2456e4f8cc2c0085ab07bc8ea6f1fe18
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: 4a328af4e8c22732ee7bc92dd9c285da252810757bf068c5fc92bf75f46d0112
+  implementations/bff-jboot-platform/modules/domain-integrations/AI_CONTEXT.md: 29641e28551f7726f25b7cb0218c97c6f75004eea4a32bb26daea1ef7a60cd79
+agents:
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/bff-jboot-platform/modules/domain-integrations/agents/domain-integrations.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+skills:
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/modules/domain-integrations/skills/domain-flow-import.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+human_approval:
+  status: approved
+  evidence: '2026-11-06: usuario definiu STATUS como primeiro comentario, responsaveis = responsaveis
+    do escritorio da importacao (admin da matriz escolhe o escritorio), um escritorio por planilha, board
+    escolhido na hora, ate 2000 linhas, so .xlsx; aprovou a arquitetura e a premissa de quem importa (papel
+    no board destino + escritorio proprio).'
+security_review:
+  status: passed
+  evidence:
+  - docs/security/flow-process-import-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- 'BFF container: typecheck, scoped ESLint; full suite 932 tests, 930 passed, 2 Gotenberg skips, zero
+  failures'
+- 'BFF PostgreSQL tests: process owners (DataJud card, imported card, other tenant), lot rows, counts,
+  PII purge, idempotent assignees'
+- 'Frontend container: type-check, ESLint, 195 vitest tests and production build passed'
+- Migrations 120/121 applied to local dev PostgreSQL (additive)
+- make ai-api-graph-gate and make ai-architecture-graph-gate passed (0 errors)
+result: 'Process import Sprint 1 implemented on feature/flow-process-import (stacked on feature/flow-petition-monitoring)
+  and validated in container. Partial: authenticated runtime smoke with a fictitious spreadsheet pending;
+  base branch smoke pending. No push/merge.'

@@ -1,0 +1,140 @@
+schema_version: "1.0.0"
+profile_id: jboot-ai-first-engineering
+profile_version: "1.1.0"
+status: conformant
+owner: ai-architecture
+approved_by: human
+last_review: "2026-11-14"
+review_due: "2027-02-14"
+
+claims:
+  engineering:
+    statement: "JBoot is AI-first for software engineering governance and execution."
+    status: conformant
+    evidence_command: make ai-conformance
+  product_runtime:
+    statement: "AI product runtime is an independently governed capability."
+    status: planned
+    evidence: src/ai/README.md
+
+scope:
+  included:
+    - AGENTS.md
+    - docs/agents
+    - docs/skills
+    - docs/ai-commands
+    - docs/ai-governance
+    - implementations/*/PROJECT_CONTRACT.md
+    - implementations/*/modules/*/MODULE_CONTRACT.md
+    - implementations/*/agents
+    - implementations/*/skills
+    - implementations/*/modules/*/agents
+    - implementations/*/modules/*/skills
+    - .codex.d
+    - .claude
+    - .cursor
+    - .github/copilot-instructions.md
+  excluded:
+    - implementations/**/legacy-reference/**
+    - implementations/**/node_modules/**
+
+thresholds:
+  active_contract_schema_coverage: 1.0
+  active_module_lifecycle_coverage: 1.0
+  generated_context_freshness: 1.0
+  runtime_adapter_control_coverage: 1.0
+  deterministic_eval_pass_rate: 1.0
+  high_critical_open_nonconformities: 0
+  unknown_measurements_encoded_as_zero: 0
+
+measurement_policy:
+  allowed_statuses:
+    - measured
+    - not_exposed
+    - not_collected
+    - not_applicable
+    - legacy_unverified
+  zero_requires_status: measured
+
+artifact_governance:
+  default_review_interval_days: 92
+  ownership_rules:
+    - pattern: docs/agents/orchestration/*.md
+      owner: ai-architecture
+    - pattern: docs/agents/*.md
+      owner: ai-architecture
+    - pattern: docs/agents/stacks/*.md
+      owner: platform-architecture
+    - pattern: docs/skills/**/SKILL.md
+      owner: ai-governance
+    - pattern: implementations/*/agents/*.md
+      owner: project-contract
+    - pattern: implementations/*/skills/*.md
+      owner: project-contract
+    - pattern: implementations/*/modules/*/agents/*.md
+      owner: module-contract
+    - pattern: implementations/*/modules/*/skills/*.md
+      owner: module-contract
+
+required_controls:
+  - id: AIF-GOV-001
+    title: Canonical machine-readable governance contract
+    blocking: true
+  - id: AIF-GOV-002
+    title: Human confirmation for material architectural decisions
+    blocking: true
+  - id: AIF-CTX-001
+    title: Deterministic and freshness-checked AI context
+    blocking: true
+  - id: AIF-EXEC-001
+    title: Target-aware execution preflight
+    blocking: true
+  - id: AIF-EXEC-002
+    title: Execution attestation and provenance
+    blocking: true
+  - id: AIF-HAR-001
+    title: Canonical AI-first engineering harness
+    blocking: true
+  - id: AIF-EVAL-001
+    title: Deterministic positive and negative behavioral evals
+    blocking: true
+  - id: AIF-EVAL-002
+    title: Regression test for every corrected non-conformity
+    blocking: true
+  - id: AIF-SEC-001
+    title: Agentic threat model and trust boundaries
+    blocking: true
+  - id: AIF-SEC-002
+    title: Tool authority and approval matrix
+    blocking: true
+  - id: AIF-OBS-001
+    title: Explicit measurement availability and provenance
+    blocking: true
+  - id: AIF-LCM-001
+    title: Project and module lifecycle evidence
+    blocking: true
+  - id: AIF-ADP-001
+    title: Runtime adapter semantic control coverage
+    blocking: true
+
+runtime_adapters:
+  - path: .codex.d/AGENTS.md
+    runtime: codex
+  - path: .claude/CLAUDE.md
+    runtime: claude
+  - path: .cursor/rules/jboot-ai-architecture.mdc
+    runtime: cursor
+  - path: .github/copilot-instructions.md
+    runtime: github-copilot
+
+references:
+  - id: NIST-AI-600-1
+    url: https://doi.org/10.6028/NIST.AI.600-1
+  - id: OWASP-AGENTIC-2026
+    url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+  - id: OTEL-SEMCONV-1.43.0
+    url: https://opentelemetry.io/docs/specs/semconv/
+  - id: JSON-SCHEMA-2020-12
+    url: https://json-schema.org/draft/2020-12
+  - id: SLSA-1.2
+    url: https://slsa.dev/spec/v1.2/provenance

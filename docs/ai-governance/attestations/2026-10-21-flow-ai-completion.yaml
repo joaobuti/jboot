@@ -1,0 +1,135 @@
+schema_version: 1.0.0
+execution_id: 20261021-flow-ai-completion-movement
+date: '2026-10-21'
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: not_exposed
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+- implementations/bff-jboot-platform/src/modules/kanban/automation
+- implementations/bff-jboot-platform/src/modules/kanban/cards/cards.service.ts
+- implementations/bff-jboot-platform/src/modules/kanban/cards/cards.repository.ts
+- implementations/bff-jboot-platform/src/modules/kanban/lead-analysis/lead-analysis.service.spec.ts
+- implementations/bff-jboot-platform/src/modules/kanban/claude-connector/flow-connector-tools.service.ts
+- implementations/bff-jboot-platform/src/modules/kanban/claude-connector/flow-connector-tools.service.spec.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/flow-admin-directory.service.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/flow-automation-actor.spec.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/card-visibility.static.spec.ts
+- implementations/bff-jboot-platform/src/modules/kanban/kanban.module.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/components/AutomationRulesSettings.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/components/automation-agent-action.spec.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/kanban-api.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/automation-movement.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/automation-movement.spec.ts
+- implementations/svc-jboot-ai-gateway/src/ai/tools/tool-catalog.ts
+- implementations/svc-jboot-ai-gateway/src/ai/tools/tool-catalog.test.ts
+- implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- docker/postgres/init/092_kanban_ai_completion_move.sql
+- docs/product/flow-ai-completion-sprints.md
+- docs/api/flow-ai-completion.md
+- docs/api/kanban-sprint-10-12-openapi.yaml
+- docs/api/kanban-claude-connector-openapi.yaml
+- docs/runbooks/flow-ai-completion.md
+- docs/runbooks/flow-claude-connector.md
+- docs/security/flow-ai-completion-checklist.md
+- docs/architecture-graph/registry.yaml
+- implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md
+- implementations/svc-jboot-ai-gateway/AI_CONTEXT.md
+instruction_sources:
+- AGENTS.md
+- docs/AI-COMMANDS.md
+- docs/ai-commands/jboot-implement-feature.md
+- docs/ai-architecture.md
+- docs/decision-principles.md
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- docs/agents/orchestration/ai-graph-architect.md
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/PROJECT_CONTRACT.md
+- implementations/app-jboot-next-platform/PROJECT_CONTRACT.md
+- implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: fc7a21c53f1b8b2294abd2d3fed59d6aba7bbd46e031e68374dd12716433e952
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: 6462e920d2fd4019a405da0dcda6bc09d074645421d8d4117ad72c6f0f7f8273
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: 4398c65ca419868a43213ef5980272a93d57c195bbe2bec93dab4f28a362dc5c
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: 182c37d57e073cc0d7d51838d28c9075d73d9623c87758fe87e05595c560c41c
+agents:
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- docs/agents/orchestration/ai-graph-architect.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+skills:
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+human_approval:
+  status: approved
+  evidence: Usuario definiu Atualizado pela IA como conclusao de TODAS as atividades
+    do prompt com sucesso e confirmacao obrigatoria; solicitou gatilho e acao Ir para
+    a coluna com seletor. Trabalho continuado no checkout compartilhado do runtime
+    conforme instrucao anterior.
+security_review:
+  status: passed
+  evidence:
+  - docs/security/flow-ai-completion-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- All runtime builds/typechecks executed inside jboot container, shared checkout
+- 'Backend final full suite: 667 tests, 665 passed, 2 Gotenberg skips, zero failures;
+  targeted completion suite 75 passed'
+- 'Existing P11 visibility test stabilized: equal now() timestamps in the transaction
+  fixture do not define event order; visibility multiset and totals remain asserted'
+- PostgreSQL real tests cover explicit completion, replay, cross-tenant/owner, canonical
+  movement, WIP/checklist, revoked scope, lease fencing, changed card/rule, all trigger
+  families, recovery/exhaustion and chain limit
+- Frontend 139 tests passed, scoped ESLint and production build passed
+- Gateway 46 tests passed, typecheck and build passed; no paid/external inference
+- make ai-check passed including conformance and API/Architecture Graph gates with
+  zero errors
+- Migration 092 applied locally, no real board automation rule created
+- Shared runtime Platform 8010, Web 3002 and Gateway 8050 restarted preserving environments;
+  health/page 200
+- Live Platform Swagger confirms ai_completed trigger and move_card action; final
+  backend scope revalidation also requires flow:write
+- Identity process untouched; gateway now also runs from shared checkout, no prior
+  source/lock divergence
+result: Feature implemented and active in shared runtime. Completion is explicit and
+  run-bound, comments no longer complete runs. Destination authority remains in admin
+  rules, movement checks current permissions and gates. Existing private prompts not
+  overwritten; runbook specifies mandatory final confirmation and API tool opt-in.
+  Terminal sprint closure remains partial because the initially dirty shared tree
+  is uncommitted with parallel work; no commit/push or production-readiness claim.

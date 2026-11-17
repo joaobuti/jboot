@@ -1,0 +1,104 @@
+schema_version: "1.0.0"
+execution_id: "20261028-flow-initial-petitions-s2"
+date: "2026-10-28"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - Makefile
+  - docker/postgres/init/097_kanban_validation_tag_values.sql
+  - docker/postgres/init/098_kanban_validation_intake_card.sql
+  - docker/postgres/init/099_kanban_validation_routine_pickup.sql
+  - docker/postgres/init/100_kanban_card_action_analyses.sql
+  - docker/postgres/init/101_kanban_automation_expected_result.sql
+  - docker/postgres/init/102_kanban_prior_lawsuits_office_lawyers.sql
+  - docs/ai-governance/attestations
+  - docs/api/flow-action-analysis-openapi.yaml
+  - docs/api/flow-customer-documents-openapi.yaml
+  - docs/api/flow-initial-petitions-openapi.yaml
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  - docs/architecture/decisions/020-flow-initial-petitions-generator.md
+  - docs/product/flow-action-analysis-routine-prompt.md
+  - docs/product/flow-action-analysis-sprints.md
+  - docs/product/flow-initial-petitions-kickoff.md
+  - docs/product/flow-initial-petitions-original-prompt.md
+  - docs/product/flow-initial-petitions-sprints.md
+  - docs/product/flow-office-kit-routine-prompt.md
+  - docs/product/flow-office-service-contract-sprints.md
+  - docs/runbooks/claudeconf.md
+  - docs/runbooks/flow-claude-connector.md
+  - docs/runbooks/flow-drive-sync.md
+  - docs/security/flow-customer-documents-checklist.md
+  - docs/security/flow-initial-petitions-checklist.md
+  - tools/dev/claude-tunnel.sh
+  - tools/dev/flow-tunnel-apply.sh
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "7f17c00d463782282154b33a0190e2f253effe55cca526289a0679819be6a685"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "c46b24dbe4b1a16fc5cf930191c411bdf77357b0955cbd20326298dd9ed89473"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "59a77ecd049cfa64fa590fbe4f32cf97c77e7e183165f13007289459a1deae12"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "9198f0efb68ff711893cd395f0844d30b4dbdaac0d9e105cb41ba9939295b6ef"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-27 o usuario fixou as decisoes 1 a 15 das peticoes iniciais (kickoff), entre elas a
+    lista de acoes ja ajuizadas com a confirmacao "sem acoes anteriores" (7) e o advogado por
+    escritorio e UF (8). Em 2026-10-28 confirmou o plano, a ADR 020, um advogado ativo por UF (Q6), a
+    migracao das regras (aplicada) e pediu a S2 na mesma branch, sem commit.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-initial-petitions-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migrations 101 e 102 aplicadas no banco de dev; regras de agente migradas com conferencia do usuario
+  - BFF no container - type-check, lint, build e 721 testes (719 passam, 2 ignorados ja existentes), com PostgreSQL real para acoes ja ajuizadas, confirmacao, advogados por UF e prazos de peticoes
+  - Web no container - type-check, lint, 159 testes e next build
+  - rotas novas respondendo 401 sem token no BFF em execucao
+  - make ai-check e make ai-diff-check aprovados
+result: >-
+  S1 e S2 das peticoes iniciais (ADR 020). S1: Resultado esperado e Quem gera o documento na regra
+  Executar agente, comentario com run_id sem concluir regra de ferramenta propria, prazo de peticoes.
+  S2: acoes ja ajuizadas na ficha (CNJ, remocao logica, confirmacao sem acoes anteriores revogada ao
+  incluir, historico) e advogados por escritorio com OAB por UF, um ativo por UF; passo Acoes
+  ajuizadas no modal de cliente e aba Advogados em Escritorios.

@@ -1,0 +1,135 @@
+schema_version: "1.0.0"
+
+# Grafo de contratos HTTP: rotas expostas por servicos x chamadas feitas por consumidores.
+# O no canonico e o endpoint normalizado (METODO /segmento/:param); linguagem entra por adapter.
+# Toda base de URL deve terminar em uma env var listada em base_env de exatamente um servico.
+
+services:
+  bff-jboot-platform:
+    framework: nestjs
+    root: implementations/bff-jboot-platform
+    sources: [src]
+    base_env:
+      - NEXT_PUBLIC_JBOOT_PLATFORM_API_URL
+      - NEXT_PUBLIC_JBOOT_PDV_API_URL
+      - NEXT_PUBLIC_PDV_API_URL
+      - JBOOT_PLATFORM_API_URL
+  bff-jboot-identity:
+    framework: nestjs
+    root: implementations/bff-jboot-identity
+    sources: [src]
+    base_env:
+      - NEXT_PUBLIC_JBOOT_IDENTITY_API_URL
+      - NEXT_PUBLIC_API_URL
+      - REACT_APP_API_URL
+      - JBOOT_IDENTITY_SERVICE_URL
+    # Env com URL completa: o path vive na configuracao de deploy, nao no codigo.
+    full_url_env:
+      - IDENTITY_HUB_JWKS_URL
+  svc-jboot-fiscal:
+    framework: laravel
+    root: implementations/svc-jboot-fiscal
+    sources: [routes]
+    base_env:
+      - JBOOT_FISCAL_SERVICE_URL
+  svc-jboot-juridico-data:
+    framework: fastapi
+    root: implementations/svc-jboot-juridico-data
+    sources: [src]
+    base_env:
+      - JBOOT_JURIDICO_DATA_SERVICE_URL
+  svc-jboot-payments:
+    framework: go-net-http
+    root: implementations/svc-jboot-payments
+    sources: [internal, cmd]
+    openapi: docs/api/payments-sprint-1-openapi.yaml
+    base_env:
+      - JBOOT_PAYMENTS_SERVICE_URL
+  svc-jboot-ai-gateway:
+    framework: nestjs
+    root: implementations/svc-jboot-ai-gateway
+    sources: [src]
+    openapi: docs/api/kanban-sprint-10-12-openapi.yaml
+    base_env:
+      - JBOOT_AI_GATEWAY_SERVICE_URL
+      - NEXT_PUBLIC_JBOOT_AI_GATEWAY_API_URL
+  wrk-jboot-juridico:
+    framework: fastapi
+    root: implementations/wrk-jboot-juridico
+    sources: [src]
+    base_env:
+      - JBOOT_JURIDICO_WORKER_URL
+  # Apps Next atendem chamadas relativas (fetch("/api/...")) da propria origem.
+  app-jboot-next-platform:
+    framework: nextjs
+    root: implementations/app-jboot-next-platform
+    sources: [src]
+  app-jboot-identity-admin:
+    framework: nextjs
+    root: implementations/app-jboot-identity-admin
+    sources: [src]
+
+consumers:
+  app-jboot-next-platform:
+    language: typescript
+    root: implementations/app-jboot-next-platform
+    sources: [src]
+  app-jboot-identity-admin:
+    language: typescript
+    root: implementations/app-jboot-identity-admin
+    sources: [src]
+  site-jboot-landing:
+    language: typescript
+    root: implementations/site-jboot-landing
+    sources: [src]
+  bff-jboot-platform:
+    language: typescript
+    root: implementations/bff-jboot-platform
+    sources: [src]
+  bff-jboot-identity:
+    language: typescript
+    root: implementations/bff-jboot-identity
+    sources: [src]
+  wrk-jboot-marketing:
+    language: typescript
+    root: implementations/wrk-jboot-marketing
+    sources: [src]
+    # Projeto ainda nao versionado: ausencia vira info e a cobertura entra quando for commitado.
+    optional: true
+  wrk-jboot-juridico:
+    language: python
+    root: implementations/wrk-jboot-juridico
+    sources: [src]
+  svc-jboot-juridico-data:
+    language: python
+    root: implementations/svc-jboot-juridico-data
+    sources: [src]
+  svc-jboot-fiscal:
+    language: php
+    root: implementations/svc-jboot-fiscal
+    sources: [app]
+  svc-jboot-payments:
+    language: go
+    root: implementations/svc-jboot-payments
+    sources: [internal, cmd]
+  svc-jboot-ai-gateway:
+    language: typescript
+    root: implementations/svc-jboot-ai-gateway
+    sources: [src]
+
+# Achados aceitos com categoria e motivo; entrada obsoleta reprova o gate.
+accepted_findings: tools/ai/api-graph-accepted.yaml
+
+# Bases que apontam para fora do monorepo; chamadas sao contadas, mas nao entram no join.
+external_env:
+  - JBOOT_META_GRAPH_BASE_URL
+  - JURIDICO_DATA_DATAJUD_BASE_URL
+  - JURIDICO_DATA_DJEN_BASE_URL
+
+exclude:
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.stories.tsx"
+  - "**/tests/**"
+  - "**/__tests__/**"

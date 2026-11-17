@@ -1,0 +1,62 @@
+schema_version: "1.0.0"
+execution_id: "20261016-marketing-platform-module-removal"
+date: "2026-10-16"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/marketing
+scope_paths:
+  - docker/postgres/init/045_marketing.sql
+  - docker/postgres/init/046_identity_marketing_dev_seed.sql
+  - docker/postgres/init/069_identity_application_permission_catalog.sql
+  - docs/ai-governance/attestations/2026-10-16-marketing-platform-module-removal.yaml
+  - docs/product/marketing-instagram-sprints.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+  - tools/ai/api-graph-accepted.yaml
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/agents/orchestration/product-engineer.md
+instruction_set_sha256: "cd45026617ccc2df19cf110b0041bf207e49b5faa42a7e6302842102c7df38c7"
+context_sha256:
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "9d6eef8f9a3faac0087232891ffc0787c203e9bb07ca976217037acca1474bd1"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "c7402138b5e5982a1dd1ee1fcd2b2fb0bbb94072e76b726638c3507c68548cfe"
+agents:
+  - docs/agents/orchestration/product-engineer.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Descarte do modulo de plataforma decidido pelo usuario em 2026-08-25
+    (revert 11b92fe5e, nunca publicado na main). Em 2026-10-16 o usuario
+    escolheu "Remover por commit de revert" ao normalizar a main.
+security_review:
+  status: not_applicable
+  evidence:
+    - remocao de codigo, rotas, seeds e config; nenhuma superficie nova
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - BFF no container - build e 569 testes sem falha (20 testes do modulo removidos)
+  - Platform Web no container - type-check, lint sem erro e 118 testes
+  - make ai-api-graph-gate sem erro; 11 aceites obsoletos de /marketing/posts removidos
+  - make ai-check aprovado
+result: >-
+  Modulo marketing de plataforma removido da main (banco jboot_marketing,
+  application e seeds, BFF, rotas, menu, slug de modulo e catalogo de
+  permissoes). Ficam o brief de marca e o worker local wrk-jboot-marketing,
+  que e a direcao escolhida. Bancos de dev ja criados mantem as tabelas e a
+  application marketing ate limpeza manual.

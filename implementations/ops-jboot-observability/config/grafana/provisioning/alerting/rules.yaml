@@ -1,0 +1,96 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: telemetry-pipeline
+    folder: JBoot Observability
+    interval: 1m
+    rules:
+      - uid: jboot_otel_export_failures
+        title: OpenTelemetry exporter failures
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: jboot-mimir
+            model:
+              datasource:
+                type: prometheus
+                uid: jboot-mimir
+              editorMode: code
+              expr: sum(increase(otelcol_exporter_send_failed_spans_total[15m])) + sum(increase(otelcol_exporter_send_failed_metric_points_total[15m])) + sum(increase(otelcol_exporter_send_failed_log_records_total[15m]))
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [B]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: [0]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: jboot-observability-overview
+        panelId: 4
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: O gateway OpenTelemetry não conseguiu entregar um ou mais sinais.
+          runbook: runbooks/otel-exporter-failures.md
+        labels:
+          owner: platform-sre
+          severity: critical
+          capability: observability
+        isPaused: false
+

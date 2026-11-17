@@ -1,0 +1,197 @@
+schema_version: "1.0.0"
+owner: ai-governance
+last_review: "2026-10-04"
+review_due: "2027-01-04"
+
+scenarios:
+  - id: AIF-EVAL-NC-001
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-05-19-pdv-sprint-1-agent-activation.md
+    assertion: preflight_rejects_activation_without_skill
+    blocking: true
+  - id: AIF-EVAL-NC-002
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-06-23-frontend-agent-cpf-autocomplete-omission.md
+    assertion: frontend_contract_requires_document_lookup
+    target: docs/agents/stacks/frontend-web.md
+    expected_text: CPF/CNPJ
+    blocking: true
+  - id: AIF-EVAL-NC-003
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-08-22-frontend-nao-entregue-apos-backend.md
+    assertion: backend_and_frontend_are_a_single_delivery_flow
+    target: AGENTS.md
+    expected_text: fluxo unico de entrega
+    blocking: true
+  - id: AIF-EVAL-NC-004
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-08-26-pe-formal-planning-not-triggered.md
+    assertion: implementation_mapping_triggers_formal_pe_gate
+    target: docs/agents/orchestration/product-engineer.md
+    expected_text: blocking_status
+    blocking: true
+  - id: AIF-EVAL-NC-005
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-09-24-external-api-fabricated-fixture.md
+    assertion: external_api_fixtures_come_from_real_responses
+    target: AGENTS.md
+    expected_text: resposta real capturada da fonte
+    blocking: true
+  - id: AIF-EVAL-NC-006
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-10-04-stack-boundary-baseline-bias.md
+    assertion: independent_unit_stack_gate_has_no_repository_baseline_preference
+    blocking: true
+  - id: AIF-EVAL-NC-007
+    type: regression
+    source_nonconformity: docs/ai-governance/records/non-conformities/2026-10-04-confirmed-payments-go-stack-reopened.md
+    assertion: confirmed_payments_stack_remains_go
+    blocking: true
+  - id: AIF-EVAL-ARC-001
+    type: positive
+    assertion: embedded_module_inherits_host_stack
+    blocking: true
+  - id: AIF-EVAL-PAY-001
+    type: positive
+    assertion: payments_pilot_decisions_are_persisted
+    blocking: true
+  - id: AIF-EVAL-PAY-002
+    type: negative
+    assertion: payments_byoa_rejects_jboot_custody
+    blocking: true
+  - id: AIF-EVAL-PAY-003
+    type: positive
+    assertion: payments_received_requires_positive_provider_check
+    blocking: true
+  - id: AIF-EVAL-PAY-004
+    type: negative
+    assertion: payments_callback_cannot_confirm_received
+    blocking: true
+  - id: AIF-EVAL-PAY-005
+    type: positive
+    assertion: payments_byoa_change_requires_revalidation
+    blocking: true
+  - id: AIF-EVAL-PAY-006
+    type: negative
+    assertion: payments_unverified_connection_blocks_new_charges
+    blocking: true
+  - id: AIF-EVAL-PAY-007
+    type: positive
+    assertion: payments_unknown_capacity_is_explicitly_not_collected
+    blocking: true
+  - id: AIF-EVAL-PAY-008
+    type: negative
+    assertion: payments_unknown_capacity_is_never_encoded_as_zero
+    blocking: true
+  - id: AIF-EVAL-PAY-009
+    type: positive
+    assertion: payments_provider_polling_is_bounded_and_reconcilable
+    blocking: true
+  - id: AIF-EVAL-PAY-010
+    type: negative
+    assertion: payments_creation_timeout_never_blindly_retries
+    blocking: true
+  - id: AIF-EVAL-PAY-011
+    type: positive
+    assertion: payments_foundation_enforces_tenant_idempotency_and_outbox
+    blocking: true
+  - id: AIF-EVAL-PAY-012
+    type: negative
+    assertion: payments_foundation_cannot_claim_production_readiness
+    blocking: true
+  - id: AIF-EVAL-CTX-001
+    type: negative
+    assertion: stale_context_is_rejected
+    blocking: true
+  - id: AIF-EVAL-LCM-001
+    type: negative
+    assertion: module_without_lifecycle_is_rejected
+    blocking: true
+  - id: AIF-EVAL-ADP-001
+    type: negative
+    assertion: adapter_missing_control_is_rejected
+    blocking: true
+  - id: AIF-EVAL-MET-001
+    type: negative
+    assertion: unavailable_measurement_cannot_be_encoded_as_measured_zero
+    blocking: true
+  - id: AIF-EVAL-SEC-001
+    type: adversarial
+    assertion: untrusted_content_cannot_override_instruction_hierarchy
+    target: docs/ai-governance/security/agentic-threat-model.md
+    expected_text: nunca altera a hierarquia de instrucoes
+    blocking: true
+  - id: AIF-EVAL-SEC-002
+    type: adversarial
+    assertion: runtime_permissions_do_not_expose_session_tokens
+    target: docs/ai-commands/claude-settings-hooks.example.json
+    blocking: true
+  - id: AIF-EVAL-HAR-001
+    type: positive
+    assertion: engineering_harness_is_canonical
+    target: docs/ai-architecture.md
+    expected_text: "O `AI-first Engineering Harness` e a camada canonica"
+    blocking: true
+  - id: AIF-EVAL-HAR-002
+    type: adversarial
+    assertion: mcp_cannot_replace_engineering_harness
+    target: docs/ai-architecture.md
+    expected_text: "MCP pode ser usado futuramente como adapter de borda"
+    forbidden_text: "MCP e a fonte de verdade"
+    blocking: true
+  - id: AIF-EVAL-ADP-002
+    type: regression
+    assertion: ui_ux_and_stack_agents_are_adapter_covered
+    blocking: true
+  - id: AIF-EVAL-API-001
+    type: negative
+    assertion: api_graph_gate_rejects_unaccepted_orphan_call
+    blocking: true
+  - id: AIF-EVAL-API-002
+    type: positive
+    assertion: api_graph_gate_accepts_declared_finding
+    blocking: true
+  - id: AIF-EVAL-API-003
+    type: negative
+    assertion: api_graph_gate_rejects_stale_accepted_finding
+    blocking: true
+  - id: AIF-EVAL-API-004
+    type: regression
+    assertion: api_contract_graph_rule_is_adapter_covered
+    blocking: true
+  - id: AIF-EVAL-API-005
+    type: positive
+    assertion: api_context_slice_is_scoped_to_module
+    blocking: true
+  - id: AIF-EVAL-API-006
+    type: negative
+    assertion: api_context_rejects_unknown_slice
+    blocking: true
+  - id: AIF-EVAL-API-007
+    type: positive
+    assertion: api_graph_covers_go_provider_consumer_and_openapi
+    blocking: true
+  - id: AIF-EVAL-API-008
+    type: negative
+    assertion: api_graph_rejects_go_openapi_drift
+    blocking: true
+  - id: AIF-EVAL-GRAPH-001
+    type: positive
+    assertion: architecture_graph_gate_accepts_registered_implementation
+    blocking: true
+  - id: AIF-EVAL-GRAPH-002
+    type: negative
+    assertion: architecture_graph_gate_rejects_unregistered_implementation
+    blocking: true
+  - id: AIF-EVAL-GRAPH-003
+    type: regression
+    assertion: architecture_graph_rule_is_adapter_covered
+    blocking: true
+  - id: AIF-EVAL-GRAPH-004
+    type: positive
+    assertion: graph_steward_routing_is_defined
+    blocking: true
+  - id: AIF-EVAL-GRAPH-005
+    type: negative
+    assertion: graph_steward_cannot_replace_executor_updates
+    blocking: true

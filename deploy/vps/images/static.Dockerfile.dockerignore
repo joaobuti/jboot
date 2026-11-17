@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+dist
+.astro
+.env
+.env.*
+*.log
+agents
+skills
+tests

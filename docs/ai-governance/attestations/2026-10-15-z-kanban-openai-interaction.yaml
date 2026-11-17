@@ -1,0 +1,90 @@
+schema_version: "1.0.0"
+execution_id: "20261015-kanban-openai-interaction"
+date: "2026-10-15"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-ai-gateway
+target_module: modules/kanban
+scope_paths:
+  - docker-compose.yml
+  - docker/postgres/init/077_ai_gateway_interactions.sql
+  - docs/ai-governance/attestations/2026-10-15-z-kanban-openai-interaction.yaml
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/data/kanban-sprint-10-12-data-model.md
+  - docs/product/kanban-ai-providers-replan.md
+  - docs/product/kanban-sprint-10-12-gate.md
+  - docs/product/kanban-sprints.md
+  - docs/security/ai-gateway-foundation-security-checklist.md
+  - docs/security/ai-gateway-openai-interaction-checklist.md
+  - docs/security/kanban-ai-agents-threat-model.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-identity
+  - implementations/bff-jboot-platform/modules/kanban
+  - implementations/svc-jboot-ai-gateway
+instruction_sources:
+  - AGENTS.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/platform-design-system.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+instruction_set_sha256: "083cf37fe7d7ed301a0f25999e5ed849a29b691ce3a05a24b3c621035cc30427"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "9a85d93f621bdb456edcb948a19b8ce93a5437d3281d9a5edf04287fe9afcba7"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "6203e8e5075b2287a05dd650cfe86e08ef05c48ef92ad99fda35e8fe20baf95e"
+  implementations/bff-jboot-identity/AI_CONTEXT.md: "5bc3ba64a68e28be4777bad7e9b3c4b926db4e1ea0e3500b392e28b9f395c8e2"
+agents:
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/platform-design-system.md
+human_approval:
+  status: approved
+  evidence: Usuario confirmou integralmente o replanejamento OpenAI-first e autorizou a implementacao em 2026-10-15.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/ai-gateway-openai-interaction-checklist.md
+    - docs/security/kanban-ai-agents-threat-model.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - gateway: 32 testes, typecheck, lint e build aprovados em container
+  - identity: 20 testes, typecheck, lint e build aprovados em container
+  - frontend: 109 testes, type-check, lint sem erros e build aprovados em container
+  - migration 077 aplicada com sucesso no PostgreSQL local
+  - API Contract Graph resolveu POST /v1/interactions para o cliente tipado
+  - make ai-check aprovado com 39 cenarios comportamentais e 56 testes do harness
+  - gateway, Identity e frontend com npm audit completo sem vulnerabilidades
+  - Identity e frontend com npm ci reprodutivel e lockfiles sincronizados
+result: >-
+  Plano corrigido e inicio funcional implementado com OpenAI habilitada primeiro,
+  Anthropic opt-in, modelos filtrados por capability, agentes com modos text e
+  json_schema, interacao manual read-only com resposta efemera e JWT s2s curto
+  emitido pelo Identity. O baseline de dependencias foi remediado e o gate de
+  merge foi encerrado. Producao permanece bloqueada por smoke externo, politica
+  de dados, KMS e controles produtivos registrados no checklist.

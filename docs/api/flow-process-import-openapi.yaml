@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: Flow - importacao de processos por planilha
+  version: 1.0.0
+  description: >-
+    docs/product/flow-process-import-sprints.md (Sprint 1). O .xlsx e lido no navegador; o BFF recebe so
+    as linhas. Exige sessao Flow (flow:read, flow:write), entitlement Juridico (juridico:read), papel
+    board_admin/board_member no board destino e escritorio permitido (admin: qualquer ativo; demais: os seus).
+security:
+  - bearerAuth: []
+paths:
+  /domain-integrations/flow/process-imports/options:
+    get:
+      summary: Boards em que o usuario cria card, escritorios permitidos e limite de linhas
+      responses:
+        '200':
+          description: Opcoes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [boards, offices, monitoringEnabled, maxRows]
+                properties:
+                  boards: { type: array, items: { $ref: '#/components/schemas/IdName' } }
+                  offices: { type: array, items: { $ref: '#/components/schemas/IdName' } }
+                  monitoringEnabled: { type: boolean, description: 'Capacidade monitoramento-processual contratada pelo cliente (ADR 021)' }
+                  maxRows: { type: integer, example: 2000 }
+  /domain-integrations/flow/process-imports/preview:
+    post:
+      summary: Conferencia linha a linha, sem gravar
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ImportRequest' } } } }
+      responses:
+        '200':
+          description: Situacao por linha
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rows]
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      required: [line, status, problems, warnings]
+                      properties:
+                        line: { type: integer }
+                        status: { type: string, enum: [ready, invalid, existing] }
+                        processNumber: { type: string, nullable: true, description: CNJ mascarado }
+                        tribunal: { type: string, nullable: true }
+                        problems:
+                          type: array
+                          items: { type: string, enum: [name_missing, cpf_invalid, process_number_invalid, process_number_tribunal_unknown, duplicate_in_sheet] }
+                        warnings:
+                          type: array
+                          items: { type: string, enum: [state_mismatch, cpf_name_differs_in_sheet, customer_name_differs, monitored_in_juridico] }
+                        customer:
+                          type: string
+                          nullable: true
+                          enum: [new, existing, unknown]
+                          description: existing so quando o usuario enxerga a ficha (CPF nao e oraculo)
+                        existingCardUrl: { type: string, nullable: true }
+        '403': { description: 'process_monitoring_not_contracted, process_import_office_not_allowed ou papel insuficiente no board' }
+        '422': { description: 'process_import_too_many_rows ou payload invalido' }
+  /domain-integrations/flow/process-imports:
+    post:
+      summary: Revalida, grava o lote com as linhas prontas e enfileira o processamento
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/ImportRequest' } } } }
+      responses:
+        '201':
+          description: Lote criado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [importId, queued, totalRows]
+                properties:
+                  importId: { type: string, format: uuid }
+                  queued: { type: boolean, description: false quando a fila nao respondeu; o lote fica pending e pode ser retomado }
+                  totalRows: { type: integer }
+        '403': { description: 'process_monitoring_not_contracted ou process_import_office_not_allowed' }
+        '422': { description: 'process_import_nothing_to_import ou process_import_too_many_rows' }
+  /domain-integrations/flow/process-imports/{importId}:
+    parameters:
+      - { name: importId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Andamento e resultado por linha (quem importou ou flow:admin)
+      responses:
+        '200':
+          description: >-
+            Lote (status pending|processing|completed|failed, contagens, failureCode) e linhas com line,
+            processNumber mascarado, status pending|created|existing|failed, cardUrl, existingCardUrl,
+            skippedAssignees e errorCode. Sem nome nem CPF.
+        '404': { description: Lote inexistente, de outro tenant ou de outro usuario sem flow:admin }
+  /domain-integrations/flow/process-imports/{importId}/resume:
+    parameters:
+      - { name: importId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Reenfileira lote nao concluido
+      responses:
+        '200': { description: '{ queued: boolean }' }
+        '404': { description: Lote nao encontrado }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    IdName:
+      type: object
+      required: [id, name]
+      properties: { id: { type: string, format: uuid }, name: { type: string } }
+    ImportRequest:
+      type: object
+      required: [boardId, officeId, rows]
+      properties:
+        boardId: { type: string, format: uuid }
+        officeId: { type: string, format: uuid }
+        rows:
+          type: array
+          minItems: 1
+          maxItems: 2000
+          items:
+            type: object
+            required: [line]
+            properties:
+              line: { type: integer, minimum: 1 }
+              name: { type: string, maxLength: 300 }
+              cpf: { type: string, maxLength: 30 }
+              processNumber: { type: string, maxLength: 40 }
+              state: { type: string, maxLength: 30, description: Coluna ESTADO; so conferencia }
+              situation: { type: string, maxLength: 300, description: Coluna STATUS; primeiro comentario do card }

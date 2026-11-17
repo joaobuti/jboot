@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: JBoot Process Monitoring Worker Callback API
+  version: 1.0.0
+  description: >
+    Rotas internas S2S da capacidade monitoramento-processual (ADR 021,
+    docs/product/process-monitoring-sprints.md, Sprint 1). Chamadas somente pelo
+    workflow Temporal `process-monitor:{client_id}:{monitor_id}` do
+    wrk-jboot-juridico. O banco e unico; o worker nao envia databaseRef.
+paths:
+  /internal/process-monitoring/monitors/{monitorId}/runs:
+    post:
+      summary: Executa uma verificacao do acompanhamento disparada pelo workflow
+      security: [{ juridicoWorker: [] }]
+      parameters:
+        - name: monitorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [clientId, scheduledAt, workflowRunId]
+              properties:
+                clientId: { type: string, format: uuid }
+                scheduledAt: { type: string, format: date-time }
+                workflowRunId: { type: string, maxLength: 128 }
+      responses:
+        '201':
+          description: Execucao concluida ou reaproveitada pela mesma chave
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [idempotencyKey, status, movementsDetected]
+                properties:
+                  idempotencyKey: { type: string }
+                  status: { type: string, enum: [success, duplicate] }
+                  movementsDetected: { type: integer, minimum: 0 }
+        '400': { description: Chave de idempotencia ausente ou corpo invalido }
+        '401': { description: JWT S2S ausente, invalido ou de outro caller }
+        '404': { description: Acompanhamento inexistente, pausado, excluido ou de outro cliente }
+        '429': { description: DataJud limitou a consulta; o workflow aplica retry }
+        '503': { description: Servico de dados indisponivel; o workflow aplica retry }
+  /internal/process-monitoring/monitors/{monitorId}/plan:
+    post:
+      summary: Ciclo diario (ADR 022) - quais fontes do acompanhamento venceram
+      security: [{ juridicoWorker: [] }]
+      parameters:
+        - name: monitorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [clientId]
+              properties:
+                clientId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Plano do ciclo; active=false encerra o workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active, datajud, djen]
+                properties:
+                  active: { type: boolean }
+                  datajud: { type: boolean }
+                  djen: { type: boolean }
+        '401': { description: JWT S2S ausente, invalido ou de outro caller }
+  /internal/process-monitoring/monitors/{monitorId}/publication-runs:
+    post:
+      summary: Consulta ao DJEN do acompanhamento (fila process-publications, ADR 022)
+      security: [{ juridicoWorker: [] }]
+      parameters:
+        - name: monitorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [clientId, scheduledAt, workflowRunId]
+              properties:
+                clientId: { type: string, format: uuid }
+                scheduledAt: { type: string, format: date-time }
+                workflowRunId: { type: string, maxLength: 128 }
+      responses:
+        '201':
+          description: Execucao concluida, reaproveitada pela mesma chave ou pulada sem a capacidade
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [idempotencyKey, status, publicationsDetected]
+                properties:
+                  idempotencyKey: { type: string }
+                  status: { type: string, enum: [success, duplicate, skipped] }
+                  publicationsDetected: { type: integer, minimum: 0 }
+        '400': { description: Chave de idempotencia ausente ou corpo invalido }
+        '401': { description: JWT S2S ausente, invalido ou de outro caller }
+        '404': { description: Acompanhamento inexistente, pausado, excluido ou de outro cliente }
+        '503': { description: DJEN ou servico de dados indisponivel; o workflow aplica retry }
+  /internal/process-monitoring/monitors/purge:
+    post:
+      summary: Remove acompanhamentos excluidos ha mais de 180 dias
+      security: [{ juridicoWorker: [] }]
+      responses:
+        '201':
+          description: Purga executada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [purged]
+                properties:
+                  purged: { type: integer, minimum: 0 }
+        '401': { description: JWT S2S ausente, invalido ou de outro caller }
+components:
+  securitySchemes:
+    juridicoWorker:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT service_access; aud=svc:platform-api; caller=juridico-worker

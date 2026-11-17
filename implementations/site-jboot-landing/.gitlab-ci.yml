@@ -1,0 +1,104 @@
+# Pipeline do site-jboot-landing (jboot.com.br na Configr).
+# Tipo de servidor Configr: React (confirmado em producao pelo suporte Configr).
+# Artefato estatico `out/` (Next export, output: export), sem servidor Node em runtime.
+#
+# Deploy: rsync por SSH para ~/jboot.com.br/www/ecosystem/implementations/site-jboot-landing/out/
+# (confirmado em 2026-08-06 via campo "Caminho base da aplicacao" do Website React
+# na Configr; diferente dos Websites Node.js, que servem direto da raiz de www/).
+# Usuario SSH: jboot3. Nao ha repositorio git na Configr.
+#
+# RISCO ACEITO em 2026-08-06: nao existe Website de staging (stg.jboot.com.br)
+# criado na Configr. Os jobs de staging ficam comentados e deploy-production
+# aponta direto para o build, sem validacao previa em staging, seguindo a
+# mesma excecao ja registrada para o Identity.
+
+.landing_rules:
+  rules:
+    - changes:
+        - implementations/site-jboot-landing/**/*
+        - scripts/deploy/**/*
+        - ci/deploy-template.gitlab-ci.yml
+        - implementations/site-jboot-landing/.gitlab-ci.yml
+
+include:
+  - local: ci/deploy-template.gitlab-ci.yml
+
+variables:
+  LANDING_SERVICE_DIR: implementations/site-jboot-landing
+
+landing:lint:
+  extends: [.node_install, .landing_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/site-jboot-landing
+  script:
+    - npm run lint
+
+landing:type-check:
+  extends: [.node_install, .landing_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/site-jboot-landing
+  script:
+    - npm run type-check
+
+landing:test:
+  extends: [.node_install, .landing_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/site-jboot-landing
+  script:
+    - npm test
+
+landing:build:
+  extends: [.node_install, .landing_rules]
+  stage: build
+  variables:
+    SERVICE_DIR: implementations/site-jboot-landing
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - implementations/site-jboot-landing/out
+    expire_in: 1 day
+
+# landing:deploy-staging:
+#   extends: [.rsync_deploy, .landing_rules]
+#   stage: deploy-staging
+#   needs: ["landing:build"]
+#   environment:
+#     name: staging/landing
+#     url: https://stg.jboot.com.br
+#   variables:
+#     DEPLOY_SOURCE_DIR: implementations/site-jboot-landing/out
+#     DEPLOY_SSH_TARGET: $LANDING_SSH_TARGET_STG
+#     DEPLOY_REMOTE_PATH: jboot.com.br/www/ecosystem/implementations/site-jboot-landing/out
+#
+# landing:smoke-staging:
+#   extends: .landing_rules
+#   stage: smoke-staging
+#   needs: ["landing:deploy-staging"]
+#   image: curlimages/curl:8.11.1
+#   script:
+#     - curl -fsS -o /dev/null -w '%{http_code}\n' https://stg.jboot.com.br/
+
+landing:deploy-production:
+  extends: [.rsync_deploy, .landing_rules]
+  stage: deploy-production
+  needs: ["landing:build"]
+  when: manual
+  environment:
+    name: production/landing
+    url: https://jboot.com.br
+  variables:
+    DEPLOY_SOURCE_DIR: implementations/site-jboot-landing/out
+    DEPLOY_SSH_TARGET: $LANDING_SSH_TARGET_PROD
+    DEPLOY_REMOTE_PATH: jboot.com.br/www/ecosystem/implementations/site-jboot-landing/out
+
+landing:smoke-production:
+  extends: .landing_rules
+  stage: smoke-production
+  needs: ["landing:deploy-production"]
+  image: curlimages/curl:8.11.1
+  script:
+    - curl -fsS -o /dev/null -w '%{http_code}\n' https://jboot.com.br/

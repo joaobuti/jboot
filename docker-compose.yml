@@ -1,0 +1,497 @@
+name: jboot
+
+services:
+  jboot:
+    build:
+      context: .
+      dockerfile: .docker/jboot/Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION:-1.25.13}
+        FLUTTER_CHANNEL: ${FLUTTER_CHANNEL:-stable}
+    container_name: jboot
+    init: true
+    working_dir: /workspace
+    command: sleep infinity
+    tty: true
+    stdin_open: true
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_NAME: ${APP_NAME:-JBoot}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      AI_DEFAULT_PROVIDER: ${AI_DEFAULT_PROVIDER:-openai}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AI_TRACE_ENABLED: ${AI_TRACE_ENABLED:-true}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/${POSTGRES_DB:-jboot}
+      MONGODB_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME:-jboot}:${MONGO_INITDB_ROOT_PASSWORD:-jboot}@mongodb:27017/admin
+      REDIS_URL: redis://valkey:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-jboot}:${RABBITMQ_DEFAULT_PASS:-jboot}@rabbitmq:5672
+      TEMPORAL_ADDRESS: temporal:7233
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-jboot}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-jbootsecret}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      QDRANT_URL: http://qdrant:6333
+      REDPANDA_BROKERS: redpanda:9092
+      JBOOT_IDENTITY_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_identity
+      JBOOT_ACCESS_TOKEN_TTL_SECONDS: ${JBOOT_ACCESS_TOKEN_TTL_SECONDS:-50400}
+      # URLs que o NAVEGADOR usa, nao a rede interna do compose. Precisam
+      # acompanhar as portas publicadas: quando JBOOT_API_PORT muda (porta 8000
+      # ocupada por outro projeto, por exemplo), o front continuaria chamando
+      # 8000 no host e cairia na aplicacao errada.
+      NEXT_PUBLIC_JBOOT_IDENTITY_API_URL: ${NEXT_PUBLIC_JBOOT_IDENTITY_API_URL:-http://127.0.0.1:${JBOOT_API_PORT:-8000}}
+      NEXT_PUBLIC_JBOOT_PLATFORM_API_URL: ${NEXT_PUBLIC_JBOOT_PLATFORM_API_URL:-http://127.0.0.1:${JBOOT_PDV_API_PORT:-8010}}
+      NEXT_PUBLIC_JBOOT_AI_GATEWAY_API_URL: ${NEXT_PUBLIC_JBOOT_AI_GATEWAY_API_URL:-http://127.0.0.1:${JBOOT_AI_GATEWAY_PORT:-8050}}
+      # Mesma API da Platform, sob o nome que o modulo PDV le.
+      NEXT_PUBLIC_JBOOT_PDV_API_URL: ${NEXT_PUBLIC_JBOOT_PDV_API_URL:-http://127.0.0.1:${JBOOT_PDV_API_PORT:-8010}}
+      # URLs de PAGINA (nao de API): destino do logout e dos launch urls de
+      # fallback. Sem elas, o front cai nos defaults `localhost:3000/login` e
+      # `localhost:3002/...` fixos no codigo — foi o que mandava o logout para a
+      # porta errada depois do remapeamento.
+      NEXT_PUBLIC_JBOOT_IDENTITY_WEB_URL: ${NEXT_PUBLIC_JBOOT_IDENTITY_WEB_URL:-http://localhost:${JBOOT_NEXT_PORT:-3000}}
+      NEXT_PUBLIC_JBOOT_PLATFORM_WEB_URL: ${NEXT_PUBLIC_JBOOT_PLATFORM_WEB_URL:-http://localhost:${JBOOT_PLATFORM_WEB_PORT:-3002}}
+      # Allowlist de CORS dos BFFs. Derivada das portas publicadas pelo mesmo
+      # motivo das URLs acima: remapear a porta de um front sem atualizar isto
+      # faz o navegador ser bloqueado no preflight. Inclui as duas formas de
+      # host — `localhost` e `127.0.0.1` nao sao a mesma origem para o browser.
+      # Conector Claude do Flow (docs/product/kanban-claude-connector-sprints.md).
+      # URLs publicas: em producao, o HTTPS publico de auth/apinode/app; em dev,
+      # derivadas das portas publicadas. O Claude.ai so alcanca URL publica
+      # (tunel); o Claude Code alcanca localhost direto.
+      JBOOT_IDENTITY_OAUTH_ISSUER_URL: ${JBOOT_IDENTITY_OAUTH_ISSUER_URL:-http://localhost:${JBOOT_API_PORT:-8000}}
+      # Links de criar/redefinir senha dos e-mails apontam para a tela publica do Identity na porta publicada.
+      JBOOT_IDENTITY_WEB_URL: ${JBOOT_IDENTITY_WEB_URL:-http://localhost:${JBOOT_NEXT_PORT:-3000}}
+      JBOOT_IDENTITY_OAUTH_CONSENT_URL: ${JBOOT_IDENTITY_OAUTH_CONSENT_URL:-http://localhost:${JBOOT_PLATFORM_WEB_PORT:-3002}/oauth/consentimento}
+      JBOOT_FLOW_CONNECTOR_RESOURCE_URL: ${JBOOT_FLOW_CONNECTOR_RESOURCE_URL:-http://localhost:${JBOOT_PDV_API_PORT:-8010}/kanban/mcp}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${JBOOT_NEXT_PORT:-3000},http://127.0.0.1:${JBOOT_NEXT_PORT:-3000},http://localhost:${JBOOT_PDV_WEB_PORT:-3001},http://127.0.0.1:${JBOOT_PDV_WEB_PORT:-3001},http://localhost:${JBOOT_PLATFORM_WEB_PORT:-3002},http://127.0.0.1:${JBOOT_PLATFORM_WEB_PORT:-3002},http://localhost:${JBOOT_JURIDICO_WEB_PORT:-3003},http://127.0.0.1:${JBOOT_JURIDICO_WEB_PORT:-3003},http://localhost:${JBOOT_VITE_PORT:-5173},http://127.0.0.1:${JBOOT_VITE_PORT:-5173}}
+      JBOOT_PDV_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_pdv
+      JBOOT_JURIDICO_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_juridico_advocacia_dev
+      JURIDICO_DATA_DATAJUD_API_KEY: ${JURIDICO_DATA_DATAJUD_API_KEY:-}
+      JURIDICO_DATA_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:-dev-only-jboot-identity-secret-change-before-production}
+      JBOOT_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:-dev-only-jboot-identity-secret-change-before-production}
+      JBOOT_PLATFORM_SERVICE_CLIENT_SECRET: ${JBOOT_PLATFORM_SERVICE_CLIENT_SECRET:-}
+      JBOOT_USER_PROVISIONING_HMAC_KEY: ${JBOOT_USER_PROVISIONING_HMAC_KEY:-dev-only-flow-user-provisioning-hmac-change-before-production}
+      JBOOT_IDENTITY_PLATFORM_SERVICE_CLIENT_SECRET: ${JBOOT_IDENTITY_PLATFORM_SERVICE_CLIENT_SECRET:-}
+      JBOOT_IDENTITY_JURIDICO_WORKER_SERVICE_CLIENT_SECRET: ${JBOOT_IDENTITY_JURIDICO_WORKER_SERVICE_CLIENT_SECRET:-}
+      # Lado do worker do mesmo par s2s: sem esta variavel o worker nao obtem
+      # service-token e toda execucao de monitoramento falha na primeira etapa.
+      JBOOT_JURIDICO_WORKER_SERVICE_CLIENT_SECRET: ${JBOOT_JURIDICO_WORKER_SERVICE_CLIENT_SECRET:-${JBOOT_IDENTITY_JURIDICO_WORKER_SERVICE_CLIENT_SECRET:-}}
+      JBOOT_JURIDICO_WORKER_INTERNAL_SECRET: ${JBOOT_JURIDICO_WORKER_INTERNAL_SECRET:-}
+      JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY: ${JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY:-}
+      JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY_VERSION: ${JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY_VERSION:-1}
+      JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY: ${JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY:-}
+      JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY_VERSION: ${JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY_VERSION:-1}
+      PAYMENTS_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_payments
+      PAYMENTS_IDENTITY_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_identity
+      PAYMENTS_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:-dev-only-jboot-identity-secret-change-before-production}
+      PAYMENTS_IDENTITY_ISSUER: ${JBOOT_IDENTITY_ISSUER:-jboot-identity}
+      PAYMENTS_SERVICE_AUDIENCE: svc:payments
+      PAYMENTS_CALLER_ALLOWLIST: platform-api
+      PAYMENTS_OTLP_ENDPOINT: ${PAYMENTS_OTLP_ENDPOINT:-}
+      PAYMENTS_OUTBOX_MODE: log
+      PAYMENTS_PROVIDER_TIMEOUT: ${PAYMENTS_PROVIDER_TIMEOUT:-8s}
+      PAYMENTS_INFINITEPAY_BASE_URL: ${PAYMENTS_INFINITEPAY_BASE_URL:-https://api.checkout.infinitepay.io}
+      PAYMENTS_PUBLIC_BASE_URL: ${PAYMENTS_PUBLIC_BASE_URL:-http://localhost:${JBOOT_PAYMENTS_PORT:-8040}}
+      JBOOT_PAYMENTS_SERVICE_URL: http://127.0.0.1:8040
+      JBOOT_AI_GATEWAY_SERVICE_URL: http://127.0.0.1:8050
+      JBOOT_KANBAN_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_kanban_demo_dev
+      AI_GATEWAY_DATABASE_URL: postgresql://${POSTGRES_USER:-jboot}:${POSTGRES_PASSWORD:-jboot}@postgres:5432/jboot_ai_gateway
+      # Chave deterministica somente para desenvolvimento local. Producao exige KMS/secret manager.
+      AI_GATEWAY_ENCRYPTION_KEY_BASE64: ${AI_GATEWAY_ENCRYPTION_KEY_BASE64:-amJvb3QtYWktZ2F0ZXdheS1kZXYta2V5LTAxMjM0NTY=}
+      AI_GATEWAY_ENCRYPTION_KEY_VERSION: ${AI_GATEWAY_ENCRYPTION_KEY_VERSION:-1}
+      AI_GATEWAY_EXECUTION_ENABLED: ${AI_GATEWAY_EXECUTION_ENABLED:-false}
+      AI_GATEWAY_SERVICE_AUDIENCE: ${AI_GATEWAY_SERVICE_AUDIENCE:-svc:ai-gateway}
+      AI_GATEWAY_CALLER_ALLOWLIST: ${AI_GATEWAY_CALLER_ALLOWLIST:-platform-api}
+      AI_GATEWAY_ENABLED_PROVIDERS: ${AI_GATEWAY_ENABLED_PROVIDERS:-openai}
+      AI_GATEWAY_ANTHROPIC_ALLOWED_MODELS: ${AI_GATEWAY_ANTHROPIC_ALLOWED_MODELS:-}
+      AI_GATEWAY_ANTHROPIC_TEXT_MODELS: ${AI_GATEWAY_ANTHROPIC_TEXT_MODELS:-}
+      AI_GATEWAY_ANTHROPIC_STRUCTURED_MODELS: ${AI_GATEWAY_ANTHROPIC_STRUCTURED_MODELS:-}
+      AI_GATEWAY_OPENAI_ALLOWED_MODELS: ${AI_GATEWAY_OPENAI_ALLOWED_MODELS:-}
+      AI_GATEWAY_OPENAI_TEXT_MODELS: ${AI_GATEWAY_OPENAI_TEXT_MODELS:-}
+      AI_GATEWAY_OPENAI_STRUCTURED_MODELS: ${AI_GATEWAY_OPENAI_STRUCTURED_MODELS:-}
+      # Drive por cliente do Flow: um app OAuth unico do JBoot no Google Cloud; cada
+      # cliente autoriza a propria conta pela tela. Sem client id/secret a tela mostra
+      # indisponibilidade e o resto do modulo continua funcional. A chave de cifra dos
+      # refresh tokens abaixo e deterministica e somente para dev; producao exige
+      # secret manager.
+      JBOOT_FLOW_DRIVE_OAUTH_CLIENT_ID: ${JBOOT_FLOW_DRIVE_OAUTH_CLIENT_ID:-}
+      JBOOT_FLOW_DRIVE_OAUTH_CLIENT_SECRET: ${JBOOT_FLOW_DRIVE_OAUTH_CLIENT_SECRET:-}
+      JBOOT_FLOW_DRIVE_PICKER_API_KEY: ${JBOOT_FLOW_DRIVE_PICKER_API_KEY:-}
+      JBOOT_FLOW_DRIVE_PICKER_APP_ID: ${JBOOT_FLOW_DRIVE_PICKER_APP_ID:-}
+      JBOOT_FLOW_DRIVE_ENCRYPTION_KEY: ${JBOOT_FLOW_DRIVE_ENCRYPTION_KEY:-dev-only-flow-drive-token-encryption-change-before-production}
+      # SMTP generico (nodemailer) do MailerService do motor de automacao por coluna do Kanban
+      # (Sprint 8). Em dev aponta para o Mailpit local (sem auth, sem TLS); em producao, so
+      # trocar estas envs para o relay SMTP real. Ver
+      # docs/product/kanban-sprint-8-gate.md.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-flow@jboot.local}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # Conversor .docx -> PDF do CRM de leads do Flow (Sprint 6; ADR 014,
+      # Decisao 2). Nome interno da rede `jboot-pdf-internal` (sem porta
+      # publicada). Usuario/senha do basic auth vem das MESMAS variaveis que o
+      # servico `gotenberg` le, entao os dois lados nunca divergem; segredo real
+      # so no mecanismo de segredos do deploy.
+      JBOOT_PDF_CONVERTER_URL: ${JBOOT_PDF_CONVERTER_URL:-http://gotenberg:3000}
+      JBOOT_PDF_CONVERTER_USER: ${JBOOT_PDF_CONVERTER_USER:-jboot-pdf}
+      JBOOT_PDF_CONVERTER_PASSWORD: ${JBOOT_PDF_CONVERTER_PASSWORD:-dev-only-jboot-pdf-secret-change-before-production}
+    networks:
+      - default
+      - jboot-pdf-internal
+    volumes:
+      - .:/workspace
+      - jboot-node-cache:/root/.npm
+      - jboot-pnpm-store:/usr/local/share/pnpm/store
+      - jboot-composer-cache:/root/.composer/cache
+      - jboot-go-cache:/go
+      - jboot-uv-cache:/root/.cache/uv
+      # Interpretadores baixados pelo uv (o python do host e 3.11 e os
+      # servicos exigem >=3.12). Sem persistir, todo recreate do container
+      # invalida os .venv que apontam para este caminho.
+      - jboot-uv-python:/root/.local/share/uv/python
+      - jboot-playwright-cache:/root/.cache/ms-playwright
+      - jboot-flutter-cache:/root/.pub-cache
+    ports:
+      - "${JBOOT_NEXT_PORT:-3000}:3000"
+      - "${JBOOT_PDV_WEB_PORT:-3001}:3001"
+      - "${JBOOT_PLATFORM_WEB_PORT:-3002}:3002"
+      - "${JBOOT_JURIDICO_WEB_PORT:-3003}:3003"
+      - "${JBOOT_VITE_PORT:-5173}:5173"
+      - "${JBOOT_API_PORT:-8000}:8000"
+      - "${JBOOT_PDV_API_PORT:-8010}:8010"
+      - "${JBOOT_JURIDICO_API_PORT:-8020}:8020"
+      - "${JBOOT_JURIDICO_DATA_PORT:-8030}:8030"
+      - "${JBOOT_PAYMENTS_PORT:-8040}:8040"
+      - "${JBOOT_AI_GATEWAY_PORT:-8050}:8050"
+      - "${JBOOT_LARAVEL_PORT:-8080}:8080"
+      - "${JBOOT_EXPO_PORT:-19000}:19000"
+      - "${JBOOT_EXPO_DEVTOOLS_PORT:-19002}:19002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      temporal:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  jboot-fiscal:
+    build:
+      context: ./implementations/svc-jboot-fiscal
+      dockerfile: docker/Dockerfile
+      args:
+        INSTALL_DEV_DEPENDENCIES: "true"
+    container_name: jboot-fiscal
+    environment:
+      APP_NAME: "svc-jboot-fiscal"
+      APP_ENV: local
+      APP_KEY: ${FISCAL_APP_KEY:-base64:B/gw8bqODsFXnFlnXEKblx5XTpeggB22RMZCz1u9zcQ=}
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8090
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: jboot_fiscal
+      DB_USERNAME: ${POSTGRES_USER:-jboot}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-jboot}
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      FISCAL_CERT_ENCRYPTION_KEY: ${FISCAL_CERT_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      IDENTITY_HUB_JWKS_URL: http://jboot:8000/.well-known/jwks.json
+      FISCAL_SERVICE_AUDIENCE: svc:fiscal
+      FISCAL_INTERNAL_SECRET: ${FISCAL_INTERNAL_SECRET:-dev-only-fiscal-internal-secret-change-in-production}
+      SEFAZ_AMBIENTE_PADRAO: homologacao
+      SEFAZ_TIMEOUT_MS: 30000
+      SEFAZ_TIMEOUT_PER_ATTEMPT_MS: 10000
+      SEFAZ_RETRY_MAX: 3
+      SEFAZ_RETRY_BACKOFF_BASE_MS: 1000
+      CERT_ALERT_DAYS_BEFORE: 30
+    ports:
+      - "${JBOOT_FISCAL_PORT:-8090}:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - fiscal
+
+  postgres:
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg18}
+    container_name: jboot-postgres
+    command: postgres -c shared_preload_libraries=pg_stat_statements
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jboot}
+      POSTGRES_USER: ${POSTGRES_USER:-jboot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jboot}
+    volumes:
+      - jboot-postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jboot} -d ${POSTGRES_DB:-jboot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongodb:
+    image: ${MONGODB_IMAGE:-mongo:8.0}
+    container_name: jboot-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-jboot}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-jboot}
+    volumes:
+      - jboot-mongodb-data:/data/db
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+
+  valkey:
+    image: ${VALKEY_IMAGE:-valkey/valkey:8-alpine}
+    container_name: jboot-valkey
+    command: valkey-server --appendonly yes
+    volumes:
+      - jboot-valkey-data:/data
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:-rabbitmq:4-management}
+    container_name: jboot-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-jboot}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-jboot}
+    volumes:
+      - jboot-rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: ${TEMPORAL_IMAGE:-temporalio/auto-setup:latest}
+    container_name: jboot-temporal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-jboot}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:-jboot}
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"
+
+  otel-collector:
+    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.157.0}
+    container_name: jboot-otel-collector
+    command: ["--config=/etc/otel/otel-collector.yaml"]
+    environment:
+      JBOOT_OBSERVABILITY_OTLP_ENDPOINT: ${JBOOT_OBSERVABILITY_OTLP_ENDPOINT:-http://host.docker.internal:14318}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker/otel/otel-collector.yaml:/etc/otel/otel-collector.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+
+  temporal-ui:
+    image: ${TEMPORAL_UI_IMAGE:-temporalio/ui:latest}
+    container_name: jboot-temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:${TEMPORAL_UI_PORT:-8088}
+    ports:
+      - "${TEMPORAL_UI_PORT:-8088}:8080"
+
+  redpanda:
+    image: ${REDPANDA_IMAGE:-redpandadata/redpanda:latest}
+    container_name: jboot-redpanda
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092,OUTSIDE://localhost:19092
+    volumes:
+      - jboot-redpanda-data:/var/lib/redpanda/data
+    ports:
+      - "${REDPANDA_PORT:-19092}:19092"
+      - "${REDPANDA_ADMIN_PORT:-9644}:9644"
+
+  minio:
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:latest}
+    container_name: jboot-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-jboot}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-jbootsecret}
+    volumes:
+      - jboot-minio-data:/data
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Dev-only: SMTP fake para o MailerService do motor de automacao por coluna do Kanban
+  # (Sprint 8, produto Flow). E-mails "enviados" ficam presos aqui, nunca saem para a
+  # internet — inspecionar em http://localhost:${MAILPIT_UI_PORT:-8025}. Ver
+  # docs/product/kanban-sprint-8-gate.md, secao "Open Questions" (escolha trivial de
+  # implementacao: Mailpit em vez de Mailhog, mais moderno/leve).
+  mailpit:
+    image: ${MAILPIT_IMAGE:-axllent/mailpit:latest}
+    container_name: jboot-mailpit
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  # Conversor .docx -> PDF do CRM de leads do Flow (Sprint 6; ADR 014, Decisao 2;
+  # docs/product/flow-crm-leads-sprints.md). Container de infra sem codigo
+  # proprio, opt-in (profile `pdf`; sobe com `make code-up TARGET=kanban-leads`
+  # ou `docker compose up -d gotenberg`). Isolamento:
+  # - so na rede `jboot-pdf-internal` (`internal: true`): sem rota para fora
+  #   (sem egress) e sem porta publicada no host; so o `jboot` o alcanca;
+  # - basic auth obrigatorio; download por URL (`downloadFrom`) e webhook
+  #   desligados (o LibreOffice nunca busca conteudo externo);
+  # - 1 CPU, 1 GB, 256 pids, rootfs somente leitura com tmpfs, sem capabilities,
+  #   sem novos privilegios, usuario nao-root da imagem (`gotenberg`).
+  # Imagem fixada por tag e digest (tag publicada em 2026-09-11, conferida no
+  # Docker Hub em 2026-10-12). Atualizacao mensal ou por CVE do LibreOffice,
+  # com o teste de fidelidade da S6 como regressao.
+  gotenberg:
+    image: ${GOTENBERG_IMAGE:-gotenberg/gotenberg:8.37.0-libreoffice@sha256:c85f019d6ae4927714507254331cc0ed72da7b619ee798e3a45de01f54372c12}
+    container_name: jboot-gotenberg
+    command:
+      - gotenberg
+      - --api-enable-basic-auth
+      - --api-disable-download-from
+      - --webhook-disable
+      - --api-timeout=60s
+      - --libreoffice-max-queue-size=10
+      - --libreoffice-restart-after=10
+      - --log-level=info
+    environment:
+      GOTENBERG_API_BASIC_AUTH_USERNAME: ${JBOOT_PDF_CONVERTER_USER:-jboot-pdf}
+      GOTENBERG_API_BASIC_AUTH_PASSWORD: ${JBOOT_PDF_CONVERTER_PASSWORD:-dev-only-jboot-pdf-secret-change-before-production}
+    networks:
+      - jboot-pdf-internal
+    # Docker (24.x) ainda encaminha consulta DNS externa a partir de rede
+    # `internal`; o conversor nao precisa de DNS externo, entao o upstream
+    # aponta para o loopback do proprio container (nada escuta): nome externo
+    # nao resolve, fechando tambem o canal de DNS.
+    dns:
+      - 127.0.0.1
+    cpus: 1.0
+    mem_limit: 1g
+    pids_limit: 256
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+      - /home/gotenberg:size=64m,uid=1001,gid=1001
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    profiles:
+      - pdf
+
+  clickhouse:
+    image: ${CLICKHOUSE_IMAGE:-clickhouse/clickhouse-server:latest}
+    container_name: jboot-clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-jboot}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-jboot}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-jboot}
+    volumes:
+      - jboot-clickhouse-data:/var/lib/clickhouse
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-9002}:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user \"$${CLICKHOUSE_USER}\" --password \"$${CLICKHOUSE_PASSWORD}\" --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
+    container_name: jboot-qdrant
+    volumes:
+      - jboot-qdrant-data:/qdrant/storage
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+
+networks:
+  # Rede do conversor de PDF (ADR 014, Decisao 2): `internal` = sem rota para
+  # fora; participantes: `gotenberg` (so esta rede) e `jboot` (esta + default).
+  jboot-pdf-internal:
+    name: jboot-pdf-internal
+    internal: true
+
+volumes:
+  jboot-node-cache:
+  jboot-pnpm-store:
+  jboot-composer-cache:
+  jboot-go-cache:
+  jboot-uv-cache:
+  jboot-uv-python:
+  jboot-playwright-cache:
+  jboot-flutter-cache:
+  jboot-postgres-data:
+  jboot-mongodb-data:
+  jboot-valkey-data:
+  jboot-rabbitmq-data:
+  jboot-redpanda-data:
+  jboot-minio-data:
+  jboot-clickhouse-data:
+  jboot-qdrant-data:

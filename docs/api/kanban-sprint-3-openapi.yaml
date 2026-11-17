@@ -1,0 +1,437 @@
+openapi: 3.1.0
+info:
+  title: JBoot Kanban (Flow) Sprint 3 API
+  version: 0.3.0
+  summary: >
+    Contrato incremental da Sprint 3: perfis de movimentacao por board (MemberProfile),
+    transicoes de coluna por perfil (MemberProfileTransition) e ACL de coluna por perfil
+    (BoardColumnPermission). Estende docs/api/kanban-sprint-1-openapi.yaml; nao redefine
+    rotas de Boards/Cards ja existentes, exceto onde indicado.
+  x-implementation-status: >
+    Implementado em 2026-06-19 (ver docs/product/kanban-sprint-3-gate.md, secao
+    "Decisoes De Implementacao" para os dois pontos que o contrato deixava
+    subespecificados: semantica do DELETE de card e default de ACL sem linha).
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: MemberProfiles
+  - name: MemberProfileTransitions
+  - name: BoardColumnPermissions
+  - name: BoardMembers
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  required_claims:
+    - sub
+    - client_id
+    - application_id
+    - database_ref
+paths:
+  /kanban/boards/{boardId}/profiles:
+    get:
+      tags: [MemberProfiles]
+      summary: List member profiles of a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Member profiles page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberProfilePage'
+    post:
+      tags: [MemberProfiles]
+      summary: Create member profile for a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMemberProfileRequest'
+      responses:
+        '201':
+          description: Created member profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberProfile'
+  /kanban/boards/{boardId}/profiles/{profileId}:
+    patch:
+      tags: [MemberProfiles]
+      summary: Update member profile (name, can_delete_archived_cards).
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberProfileRequest'
+      responses:
+        '200':
+          description: Updated member profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberProfile'
+    delete:
+      tags: [MemberProfiles]
+      summary: Remove member profile from a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '204':
+          description: Member profile removed.
+        '409':
+          description: Profile still assigned to active board members.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /kanban/boards/{boardId}/profiles/{profileId}/transitions:
+    get:
+      tags: [MemberProfileTransitions]
+      summary: List allowed column transitions for a profile.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200':
+          description: Transitions list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberProfileTransition'
+    put:
+      tags: [MemberProfileTransitions]
+      summary: Replace the full set of allowed transitions for a profile.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceMemberProfileTransitionsRequest'
+      responses:
+        '200':
+          description: Updated transitions list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberProfileTransition'
+  /kanban/boards/{boardId}/profiles/{profileId}/column-permissions:
+    get:
+      tags: [BoardColumnPermissions]
+      summary: List column ACL entries for a profile.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200':
+          description: Column permissions list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BoardColumnPermission'
+    put:
+      tags: [BoardColumnPermissions]
+      summary: Replace the full set of column ACL entries for a profile.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceBoardColumnPermissionsRequest'
+      responses:
+        '200':
+          description: Updated column permissions list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BoardColumnPermission'
+  /kanban/boards/{boardId}/members/{memberId}/profile:
+    patch:
+      tags: [BoardMembers]
+      summary: Assign or unassign a member profile to a board member.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignMemberProfileRequest'
+      responses:
+        '200':
+          description: Updated board member with profile assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardMemberWithProfile'
+  /kanban/boards/{boardId}/cards/{cardId}:
+    delete:
+      tags: [MemberProfiles]
+      summary: >
+        Permanently delete an archived card. Extends Sprint 1 contract: allowed only for the
+        card author, a member whose active profile has can_delete_archived_cards = true, or board_admin (bypass).
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      responses:
+        '204':
+          description: Card permanently deleted.
+        '403':
+          description: Not author, profile without can_delete_archived_cards, and not board_admin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Card is not archived.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    MemberProfile:
+      type: object
+      required: [id, boardId, name, canDeleteArchivedCards, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        canDeleteArchivedCards:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateMemberProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        canDeleteArchivedCards:
+          type: boolean
+          default: false
+    UpdateMemberProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        canDeleteArchivedCards:
+          type: boolean
+    MemberProfilePage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberProfile'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    PageMeta:
+      type: object
+      required: [limit, offset, total]
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+    MemberProfileTransition:
+      type: object
+      required: [id, profileId, fromBoardColumnId, toBoardColumnId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        profileId:
+          type: string
+          format: uuid
+        fromBoardColumnId:
+          type: string
+          format: uuid
+        toBoardColumnId:
+          type: string
+          format: uuid
+    ReplaceMemberProfileTransitionsRequest:
+      type: object
+      required: [transitions]
+      properties:
+        transitions:
+          type: array
+          items:
+            type: object
+            required: [fromBoardColumnId, toBoardColumnId]
+            properties:
+              fromBoardColumnId:
+                type: string
+                format: uuid
+              toBoardColumnId:
+                type: string
+                format: uuid
+    BoardColumnPermission:
+      type: object
+      required: [id, profileId, boardColumnId, canView, canEdit]
+      properties:
+        id:
+          type: string
+          format: uuid
+        profileId:
+          type: string
+          format: uuid
+        boardColumnId:
+          type: string
+          format: uuid
+        canView:
+          type: boolean
+        canEdit:
+          type: boolean
+    ReplaceBoardColumnPermissionsRequest:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: array
+          items:
+            type: object
+            required: [boardColumnId, canView, canEdit]
+            properties:
+              boardColumnId:
+                type: string
+                format: uuid
+              canView:
+                type: boolean
+              canEdit:
+                type: boolean
+    AssignMemberProfileRequest:
+      type: object
+      required: [profileId]
+      properties:
+        profileId:
+          type: [string, 'null']
+          format: uuid
+          description: null unassigns the profile from the member.
+    BoardMemberWithProfile:
+      type: object
+      required: [id, boardId, identityId, role, status, profileId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [board_admin, board_member, board_viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        profileId:
+          type: [string, 'null']
+          format: uuid
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

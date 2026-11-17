@@ -1,0 +1,89 @@
+schema_version: "1.0.0"
+execution_id: "20261021-flow-office-validation"
+date: "2026-10-21"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker/postgres/init/093_kanban_office_validation.sql
+  - docker/postgres/init/094_identity_flow_validation_approve.sql
+  - docker/postgres/init/095_kanban_customer_hiscred.sql
+  - docs/ai-governance/attestations/2026-10-21-flow-hiscred.yaml
+  - docs/security/flow-hiscred-checklist.md
+  - docs/ai-governance/attestations/2026-10-21-flow-office-validation.yaml
+  - docs/api/flow-customer-documents-openapi.yaml
+  - docs/api/flow-crm-leads-sprint-3-5-openapi.yaml
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/architecture/decisions/017-flow-customer-documents-validation-drive.md
+  - docs/architecture/decisions/018-flow-validation-by-office-claude-account.md
+  - docs/product/flow-customer-documents-sprints.md
+  - docs/runbooks/flow-claude-connector.md
+  - docs/security/flow-customer-documents-checklist.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "1ee4d6b871b7b5c968e823f866d20e0b20119832ae502094a2bd58e7a9590cd4"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "bd585006b3929533bb98b7ceb9beebc96cfe0db8238d825c9c460906a58a3d84"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "b9bf1ad332cdeefb8562e5ae8744e7ad48ab863d9dafbcbe82cbddb4915b7845"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-21 o usuario informou que cada escritorio valida na propria conta
+    Claude Pro e so a Analise de Acoes vai para a conta principal; decidiu: escolha
+    do escritorio ao validar, conta principal como reserva, flow:admin configura e
+    indica o escritorio, responsavel por escritorio vinculado a conta, permissao
+    nova "aprovar parecer", envio de dados e documentos do cliente para a rotina
+    da Analise de Acoes; aprovou o plano S4/S5 ("manda ver").
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-customer-documents-checklist.md
+    - docs/architecture/decisions/018-flow-validation-by-office-claude-account.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migrations 093 e 094 aplicadas no banco de dev (5 entitlements flow:admin receberam flow:validation:approve)
+  - BFF no container - type-check, lint, build e 624 testes (622 passam, 2 ignorados ja existentes)
+  - Web no container - type-check, lint e 130 testes; next build
+  - API e navegador reais - permissao no token, responsavel recusado fora do vinculo, rota por escritorio e conta principal, telas de configuracao e responsavel
+result: >-
+  S4 e S5 de flow-customer-documents: validacao pela conta Claude do escritorio
+  com responsavel por escritorio, conta principal como reserva, escolha do
+  escritorio, permissao flow:validation:approve para confirmar; tools da
+  automacao para a rotina da conta principal ler o cliente do card.

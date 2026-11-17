@@ -1,0 +1,82 @@
+schema_version: "1.0.0"
+execution_id: "20261022-flow-consolidation-merge"
+date: "2026-10-22"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - .env.example
+  - docker-compose.yml
+  - docker/postgres/init
+  - docs/ai-governance/attestations
+  - docs/api
+  - docs/architecture
+  - docs/architecture-graph/registry.yaml
+  - docs/product
+  - docs/runbooks
+  - docs/security
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "7128de183c9ff4eef28847393b538f18e26a3aecccf0046ff3d206ece06ba4cc"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "46eb9fa00666ee6d4f07285901c717ebf614eced6390d86d02c03d6fa8fbe8da"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "b9bf1ad332cdeefb8562e5ae8744e7ad48ab863d9dafbcbe82cbddb4915b7845"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-22 o usuario pediu: "faca o merge das branchs para essa branch aqui e
+    junte na main. Vamos assumir a partir dai" (MRs do Flow !8, !9, !10, !11, !12 com a
+    S6 e !13 consolidados em feature/flow-office-validation e depois na main).
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-customer-documents-checklist.md
+    - docs/security/flow-hiscred-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - cada MR consolidado tem attestation propria (2026-10-16 customer-documents e domain-integrations-fixes, 2026-10-17 email-automation-outbox, 2026-10-21 office-service-contract, office-validation, hiscred e validation-extraction)
+  - conflito com o hardening H1 da main resolvido portando officeId obrigatorio e outbox duravel para a estrutura nova (exporters, FlowBoardsQuery, subscriber), com testes novos
+  - BFF no container - type-check, lint e 677 testes (675 passam, 2 ignorados ja existentes)
+  - Web no container - type-check, lint e 143 testes
+  - make ai-check aprovado
+result: >-
+  Consolidacao dos MRs do Flow na main: documentos da ficha e validacao Claude por
+  escritorio (S0-S6), contrato de servicos por escritorio, correcoes de
+  domain-integrations, outbox duravel de e-mail e badges visiveis, sobre o hardening
+  H1 de domain-integrations ja presente na main.

@@ -1,0 +1,55 @@
+---
+import "../styles/global.css";
+import { casePath, shared } from "../content/site-data.mjs";
+
+const { page, caseId } = Astro.props;
+const canonical = new URL(page.path, Astro.site).toString();
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: shared.name,
+  jobTitle: page.hero.title,
+  email: shared.email,
+  url: new URL(page.lang === "pt-BR" ? "/pt/" : "/" + page.lang + "/", Astro.site).toString(),
+  sameAs: [shared.linkedin],
+  knowsAbout: [
+    "Software Architecture",
+    "AI-First Architecture",
+    "Technical Leadership",
+    "Laravel",
+    "NestJS",
+    "PostgreSQL",
+    "Legacy Modernization",
+  ],
+};
+---
+
+<!doctype html>
+<html lang={page.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{page.seo.title}</title>
+    <meta name="description" content={page.seo.description} />
+    <link rel="canonical" href={canonical} />
+    {shared.locales.map((locale) => (
+      <link rel="alternate" hreflang={locale.lang} href={new URL(caseId ? casePath(locale.code, caseId) : locale.path, Astro.site).toString()} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={new URL(caseId ? casePath("pt", caseId) : shared.defaultUrl, Astro.site).toString()} />
+    <meta property="og:type" content={caseId ? "article" : "profile"} />
+    <meta property="og:title" content={page.seo.title} />
+    <meta property="og:description" content={page.seo.description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL("/assets/signal-architecture-hero.png", Astro.site).toString()} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={page.seo.title} />
+    <meta name="twitter:description" content={page.seo.description} />
+    <meta name="theme-color" content="#111318" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {!caseId && <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />}
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

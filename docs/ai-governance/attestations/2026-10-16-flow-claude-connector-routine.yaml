@@ -1,0 +1,113 @@
+schema_version: "1.0.0"
+execution_id: "20261016-flow-claude-connector-routine"
+date: "2026-10-16"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - .env.example
+  - docker-compose.yml
+  - docker/postgres/init/081_identity_oauth_connector.sql
+  - docker/postgres/init/082_kanban_claude_connector.sql
+  - docker/postgres/init/083_ai_gateway_routine_agents.sql
+  - docker/postgres/init/084_kanban_ai_routine_dispatch.sql
+  - docs/ai-governance/attestations/2026-10-16-flow-claude-connector-routine.yaml
+  - docs/ai-governance/records/non-conformities/2026-10-15-agent-activation-late-claude-connector.md
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/product/kanban-ai-providers-replan.md
+  - docs/product/kanban-claude-connector-sprints.md
+  - docs/product/kanban-sprints.md
+  - docs/runbooks/flow-claude-connector.md
+  - docs/security/flow-claude-connector-checklist.md
+  - implementations/app-jboot-identity-admin
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-identity
+  - implementations/bff-jboot-platform
+  - implementations/svc-jboot-ai-gateway
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-identity-admin/agents/frontend-web.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+  - implementations/bff-jboot-identity/agents/postgres-identity.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+instruction_set_sha256: "f8945e07c2925485e59d3cfe4814271ff56b05249ba063bd680faf47141741c8"
+context_sha256:
+  implementations/bff-jboot-identity/AI_CONTEXT.md: "9a20b532306d1f9a41cb724779645d2895e17d94a92a8c8b0fa8d3b9a540a009"
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "1cfdd9c60a2b1547dd0b21bada9f001a641e5cb30ad692e8509552906bafdabe"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "93738bbc645854bf3ff656044e95994efb1dfdf0e8cd2c098f08618245535bee"
+  implementations/app-jboot-identity-admin/AI_CONTEXT.md: "9a9901da1ea5774c427e84c255e87e7cdf8db52bebfa50018335dfd9279d3d98"
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "db9cb403ff36819c240d6935f8049af37fd1790e74009e4e4caa19413981a34d"
+agents:
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+  - implementations/bff-jboot-identity/agents/postgres-identity.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-identity-admin/agents/frontend-web.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+human_approval:
+  status: approved
+  evidence: >-
+    2026-10-15: usuario escolheu "Conector MCP + API key", informou que o
+    cliente exige o Claude Pro e aprovou com "otimo, pode implementar". Para a
+    automacao escolheu "Rotina (Pro) + API key", prompt na rotina, implementar a
+    Sprint 12 na mesma branch sem commit. Diante da Sprint 12 entregue em
+    paralelo na base, escolheu "Base deles + portar rotina". A escolha concreta
+    do authorization server segue registrada para ratificacao.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-claude-connector-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - Identity no container - 27 testes e 6 de integracao OAuth com PostgreSQL e Valkey reais (JBOOT_OAUTH_IT=1)
+  - CIMD validado contra o documento real do Claude Code capturado em 2026-10-15
+  - BFF no container - 589 testes (conector, outbox rotina com PostgreSQL real, processor, regras), build e lint
+  - AI Gateway no container - 46 testes (adapter de fire, execucao rotina, agent rotina com PostgreSQL real, CHECK com NULL, nome reservado 409), lint e build
+  - Platform Web no container - 117 testes, type-check, lint sem erro e next build
+  - Identity Admin no container - 4 testes e type-check
+  - E2E conector com servicos do worktree - OAuth com client_id CIMD real, consentimento no navegador, tools via cliente MCP do SDK, revogacao e refresh pos-revogacao
+  - E2E rotina - card movido ate POST real em api.anthropic.com; 401 da Anthropic vira outbox failed routine_token_invalid; console manual recusa rotina sem ledger
+  - E2E tela - agente rotina salvo pelo formulario e listado no seletor Executar agente da automacao
+  - make ai-api-graph-gate sem erro; avisos esperados no fetch dinamico do CIMD e da URL de fire da rotina
+  - make ai-check aprovado (inclui ai-conformance)
+result: >-
+  Conector MCP do Flow para uso da assinatura Claude do proprio usuario (OAuth
+  2.1 com CIMD no Identity, resource server MCP no BFF, configuracao por tenant,
+  consentimento e conexoes na Platform Web) e modo claude_routine portado sobre
+  a Sprint 12 da base: agente de rotina no gateway com token cifrado, disparo
+  so com identificadores, outbox dispatched com retry limitado a 429/503 e
+  conclusao pelo comentario com runId. Nenhuma credencial do Claude.ai
+  coletada. Smoke com conta e rotina reais (URL publica), confirmacao comercial
+  com a Anthropic e ordem de deploy seguem pendentes; nao e production_ready.

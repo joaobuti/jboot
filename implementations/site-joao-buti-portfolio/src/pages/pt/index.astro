@@ -1,0 +1,12 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PortfolioPage from "../../components/PortfolioPage.astro";
+import { pages } from "../../content/site-data.mjs";
+
+const page = pages.pt;
+---
+
+<BaseLayout page={page}>
+  <PortfolioPage page={page} locale="pt" />
+</BaseLayout>
+

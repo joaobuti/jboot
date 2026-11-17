@@ -1,0 +1,81 @@
+schema_version: "1.0.0"
+execution_id: "20261029-flow-petition-signature"
+date: "2026-10-29"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker/postgres/init/110_kanban_petition_signature.sql
+  - docs/ai-governance/attestations
+  - docs/api/flow-crm-leads-sprint-3-5-openapi.yaml
+  - docs/api/flow-initial-petitions-openapi.yaml
+  - docs/architecture/decisions/020-flow-initial-petitions-generator.md
+  - docs/product/flow-initial-petitions-routine-prompt.md
+  - docs/product/flow-initial-petitions-sprints.md
+  - docs/security/flow-initial-petitions-checklist.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "b9018d458417c61c919935060226c9477d3b859258bd8bae377715901ad95e76"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "92b8505c609d91bff15b8b6558c0aa76db77493222f25e86caa08c44e3742e0e"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "90b7359fd44b069ce95a8565572f15b5822a5451731e9b18995fd2f0fc3124e8"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "9d31f28397f975a462ec64a769f73ad354f24598ba67a18c8f492f43a96cc637"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "d39aa50ef225f39ae5dfecbd453bdd536a26b8d36747374c8189b4fb09287949"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-29 o usuario decidiu: data do fecho = data da geracao; OAB no cadastro do usuario do Flow,
+    varias por usuario (uma por UF); quem assina = responsavel do card com OAB na UF, hierarquia responsavel
+    pelo escritorio > board_admin > demais; local = cidade/UF do escritorio; versao corrigida a qualquer
+    momento ate a peticao ter protocolo. Confirmou o plano S7/S8, a branch dedicada e a saida de
+    Escritorios -> Advogados ("Confirmo, seguir").
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-initial-petitions-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migration 110 aplicada duas vezes no banco de dev (idempotente)
+  - BFF no container - type-check, lint, build e 831 testes (829 passam, 2 ignorados ja existentes), com PostgreSQL real para a hierarquia de quem assina, versao corrigida, Drive no mesmo arquivo e protocolo travando
+  - Web no container - type-check, lint (0 erro), 176 testes e next build
+  - make ai-check aprovado (API graph 0 erro; architecture graph 0 achado)
+result: >-
+  S7 e S8 das peticoes iniciais (ADR 020, emenda de 2026-10-29). S7: fecho montado pelo Flow com a
+  cidade/UF do escritorio, a data da geracao e o responsavel do card com OAB na UF; OAB no cadastro do
+  usuario (Usuarios -> Advogado); Escritorios -> Advogados removido. S8: versao corrigida da peticao ate o
+  protocolo, pendente de aprovacao e substituindo o mesmo arquivo no Drive. Smoke com a rotina real e no
+  app pendente.

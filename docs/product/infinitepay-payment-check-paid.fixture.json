@@ -1,0 +1,24 @@
+{
+  "_provenance": {
+    "source": "POST https://api.checkout.infinitepay.io/payment_check",
+    "captured_at": "2026-10-04",
+    "environment": "production_api_controlled_test",
+    "consulted_identifier": "merchant handle, order_nsu, transaction_nsu and slug redacted",
+    "request_summary": "identifiers captured from the controlled Checkout Pix redirect",
+    "http_status": 200,
+    "sanitization": [
+      "merchant handle omitted",
+      "order_nsu omitted",
+      "transaction_nsu omitted",
+      "slug omitted"
+    ]
+  },
+  "response": {
+    "success": true,
+    "paid": true,
+    "amount": 100,
+    "paid_amount": 100,
+    "installments": 1,
+    "capture_method": "pix"
+  }
+}

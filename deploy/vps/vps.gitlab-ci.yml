@@ -1,0 +1,235 @@
+# Pipeline do deploy no VPS Hostinger (docs/product/hostinger-vps-hosting-sprints.md, S3).
+# Incluido pelo .gitlab-ci.yml da raiz.
+#
+# Fluxo (so na branch padrao):
+#   1. vps:build:<imagem>  builda e publica no registry do GitLab as imagens cujos
+#      arquivos mudaram, com tags <sha do commit> e `main`. O build nunca roda no VPS.
+#   2. vps:deploy (manual) garante a tag <sha> em todas as imagens (as que nao
+#      mudaram recebem a tag a partir de `main`, sem rebuild) e chama o deploy no
+#      VPS por SSH. A chave do CI so executa /usr/local/sbin/jboot-deploy.
+#
+# Primeiro deploy, ou depois de limpar o registry: rodar um pipeline manual na
+# main com a variavel VPS_BUILD_ALL=1, que builda todas as imagens.
+#
+# Rollback: rodar de novo o job vps:deploy de um pipeline anterior.
+#
+# Variaveis do projeto no GitLab (Settings > CI/CD > Variables), todas
+# protegidas, so para a branch padrao:
+#   VPS_HOST              187.53.112.180
+#   VPS_SSH_PRIVATE_KEY   tipo File; chave privada do CI (jboot-vps-ci)
+#   VPS_SSH_KNOWN_HOSTS   tipo File; saida de `ssh-keyscan -t ed25519 187.53.112.180`
+
+variables:
+  VPS_DOCKER_IMAGE: docker:27.5.1
+  VPS_DOCKER_DIND_IMAGE: docker:27.5.1-dind
+  # Hosts publicos embutidos no build dos apps Next (NEXT_PUBLIC_* sao de build).
+  # Precisam bater com o /opt/jboot/.env do VPS.
+  VPS_AUTH_URL: https://auth.jboot.com.br
+  VPS_ADMIN_URL: https://admin.jboot.com.br
+  VPS_APP_URL: https://app.jboot.com.br
+  VPS_PLATFORM_API_URL: https://apinode.jboot.com.br
+  VPS_AI_API_URL: https://ai-api.jboot.com.br
+  VPS_PORTFOLIO_URL: https://portfolio.jboot.com.br
+  # Cookies de sessao valem em admin.* e app.* (login em um, Flow/PDV no outro).
+  # Sem isso o app nao enxerga o token: "Missing bearer token" (e8d2940bb).
+  VPS_COOKIE_DOMAIN: .jboot.com.br
+
+.vps_on_main: &vps_on_main
+  if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+.vps_build:
+  stage: build
+  image: $VPS_DOCKER_IMAGE
+  services:
+    - name: $VPS_DOCKER_DIND_IMAGE
+      alias: docker
+  variables:
+    DOCKER_TLS_CERTDIR: /certs
+    VPS_BUILD_ARGS: ""
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    # buildx nao aceita o TLS do dind vindo de variaveis de ambiente; um context
+    # guarda esses dados e o builder nasce a partir dele.
+    - docker context create vps-ci >/dev/null
+    - docker buildx create --use --driver docker-container vps-ci >/dev/null
+  script:
+    - IMG="$CI_REGISTRY_IMAGE/$VPS_IMAGE"
+    - >
+      docker buildx build --push --provenance=false
+      -f "$VPS_DOCKERFILE"
+      -t "$IMG:$CI_COMMIT_SHA" -t "$IMG:main"
+      --cache-from "type=registry,ref=$IMG:buildcache"
+      --cache-to "type=registry,ref=$IMG:buildcache,mode=max"
+      $VPS_BUILD_ARGS
+      "$VPS_CONTEXT"
+
+vps:build:migrate:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: migrate
+    VPS_DOCKERFILE: deploy/vps/images/migrate.Dockerfile
+    VPS_CONTEXT: .
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [docker/postgres/init/**/*, docker/postgres/prod/**/*, tools/db/**/*, deploy/vps/images/migrate.Dockerfile*]
+
+vps:build:landing:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: landing
+    VPS_DOCKERFILE: deploy/vps/images/static.Dockerfile
+    VPS_CONTEXT: implementations/site-jboot-landing
+    VPS_BUILD_ARGS: --build-arg OUTPUT_DIR=out
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/site-jboot-landing/**/*, deploy/vps/images/static.Dockerfile*]
+
+vps:build:portfolio:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: portfolio
+    VPS_DOCKERFILE: deploy/vps/images/static.Dockerfile
+    VPS_CONTEXT: implementations/site-joao-buti-portfolio
+    VPS_BUILD_ARGS: --build-arg OUTPUT_DIR=dist --build-arg SITE_URL=$VPS_PORTFOLIO_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/site-joao-buti-portfolio/**/*, deploy/vps/images/static.Dockerfile*]
+
+vps:build:identity-api:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: identity-api
+    VPS_DOCKERFILE: deploy/vps/images/nest.Dockerfile
+    VPS_CONTEXT: implementations/bff-jboot-identity
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/bff-jboot-identity/**/*, deploy/vps/images/nest.Dockerfile*]
+
+vps:build:platform-api:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: platform-api
+    VPS_DOCKERFILE: deploy/vps/images/nest.Dockerfile
+    VPS_CONTEXT: implementations/bff-jboot-platform
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/bff-jboot-platform/**/*, deploy/vps/images/nest.Dockerfile*]
+
+vps:build:ai-gateway:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: ai-gateway
+    VPS_DOCKERFILE: deploy/vps/images/nest.Dockerfile
+    VPS_CONTEXT: implementations/svc-jboot-ai-gateway
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/svc-jboot-ai-gateway/**/*, deploy/vps/images/nest.Dockerfile*]
+
+vps:build:identity-admin:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: identity-admin
+    VPS_DOCKERFILE: deploy/vps/images/next.Dockerfile
+    VPS_CONTEXT: implementations/app-jboot-identity-admin
+    VPS_BUILD_ARGS: >-
+      --build-arg NEXT_PUBLIC_JBOOT_IDENTITY_API_URL=$VPS_AUTH_URL
+      --build-arg NEXT_PUBLIC_API_URL=$VPS_AUTH_URL
+      --build-arg NEXT_PUBLIC_JBOOT_IDENTITY_WEB_URL=$VPS_ADMIN_URL
+      --build-arg NEXT_PUBLIC_JBOOT_PLATFORM_WEB_URL=$VPS_APP_URL
+      --build-arg NEXT_PUBLIC_COOKIE_DOMAIN=$VPS_COOKIE_DOMAIN
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/app-jboot-identity-admin/**/*, deploy/vps/images/next.Dockerfile*, deploy/vps/vps.gitlab-ci.yml]
+
+vps:build:platform-web:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: platform-web
+    VPS_DOCKERFILE: deploy/vps/images/next.Dockerfile
+    VPS_CONTEXT: implementations/app-jboot-next-platform
+    VPS_BUILD_ARGS: >-
+      --build-arg PACKAGE_MANAGER=pnpm
+      --build-arg NEXT_PUBLIC_JBOOT_IDENTITY_API_URL=$VPS_AUTH_URL
+      --build-arg NEXT_PUBLIC_JBOOT_IDENTITY_WEB_URL=$VPS_ADMIN_URL
+      --build-arg NEXT_PUBLIC_JBOOT_PLATFORM_API_URL=$VPS_PLATFORM_API_URL
+      --build-arg NEXT_PUBLIC_JBOOT_PDV_API_URL=$VPS_PLATFORM_API_URL
+      --build-arg NEXT_PUBLIC_JBOOT_AI_GATEWAY_API_URL=$VPS_AI_API_URL
+      --build-arg NEXT_PUBLIC_JBOOT_PLATFORM_WEB_URL=$VPS_APP_URL
+      --build-arg NEXT_PUBLIC_COOKIE_DOMAIN=$VPS_COOKIE_DOMAIN
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/app-jboot-next-platform/**/*, deploy/vps/images/next.Dockerfile*, deploy/vps/vps.gitlab-ci.yml]
+
+vps:build:juridico-data:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: juridico-data
+    VPS_DOCKERFILE: deploy/vps/images/python.Dockerfile
+    VPS_CONTEXT: implementations/svc-jboot-juridico-data
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/svc-jboot-juridico-data/**/*, deploy/vps/images/python.Dockerfile*]
+
+vps:build:juridico-worker:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: juridico-worker
+    VPS_DOCKERFILE: deploy/vps/images/python.Dockerfile
+    VPS_CONTEXT: implementations/wrk-jboot-juridico
+    VPS_BUILD_ARGS: --build-arg INSTALL_PLAYWRIGHT=1
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/wrk-jboot-juridico/**/*, deploy/vps/images/python.Dockerfile*]
+
+vps:build:payments:
+  extends: .vps_build
+  variables:
+    VPS_IMAGE: payments
+    VPS_DOCKERFILE: implementations/svc-jboot-payments/Dockerfile
+    VPS_CONTEXT: implementations/svc-jboot-payments
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $VPS_BUILD_ALL == "1"
+    - <<: *vps_on_main
+      changes: [implementations/svc-jboot-payments/**/*]
+
+vps:deploy:
+  stage: deploy-production
+  image: $VPS_DOCKER_IMAGE
+  resource_group: vps-production
+  environment:
+    name: production-vps
+  rules:
+    - <<: *vps_on_main
+      when: manual
+  variables:
+    VPS_IMAGES: migrate landing portfolio identity-api platform-api ai-gateway identity-admin platform-web juridico-data juridico-worker payments
+  before_script:
+    - apk add --no-cache openssh-client tar >/dev/null
+    # imagetools fala direto com o registry; sem daemon, o login vai no config.json.
+    - mkdir -p ~/.docker
+    - AUTH=$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')
+    - printf '{"auths":{"%s":{"auth":"%s"}}}' "$CI_REGISTRY" "$AUTH" > ~/.docker/config.json
+    - install -m 600 "$VPS_SSH_PRIVATE_KEY" ~/vps_key
+    - mkdir -p -m 700 ~/.ssh && cp "$VPS_SSH_KNOWN_HOSTS" ~/.ssh/known_hosts
+  script:
+    - |
+      for name in $VPS_IMAGES; do
+        img="$CI_REGISTRY_IMAGE/$name"
+        if docker buildx imagetools inspect "$img:$CI_COMMIT_SHA" >/dev/null 2>&1; then
+          echo "imagem $name: build deste commit"
+        else
+          docker buildx imagetools create -t "$img:$CI_COMMIT_SHA" "$img:main"
+          echo "imagem $name: sem mudanca, tag $CI_COMMIT_SHA a partir de main"
+        fi
+      done
+    - tar -C deploy/vps -c docker-compose.prod.yml Caddyfile | ssh -i ~/vps_key -o IdentitiesOnly=yes "deploy@$VPS_HOST" "deploy $CI_COMMIT_SHA"

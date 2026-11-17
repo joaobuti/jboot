@@ -1,0 +1,415 @@
+openapi: 3.1.0
+info:
+  title: Conector Claude do Flow
+  version: 1.0.0
+  description: |
+    Contrato HTTP do conector Claude do Flow (docs/product/kanban-claude-connector-sprints.md).
+    Dois servicos: `bff-jboot-identity` (authorization server OAuth 2.1, consentimento,
+    conexoes e introspeccao) e `bff-jboot-platform` (resource server MCP e configuracao
+    do tenant). Os endpoints de protocolo OAuth sao servidos pelos handlers do SDK MCP
+    (`@modelcontextprotocol/sdk` 1.32.1) e seguem RFC 6749/7636/7009/8414; aqui ficam
+    documentados para referencia, sem redefinir o formato do SDK.
+servers:
+  - url: https://auth.jboot.com.br
+    description: bff-jboot-identity (issuer OAuth)
+  - url: https://apinode.jboot.com.br
+    description: bff-jboot-platform (resource server)
+tags:
+  - name: oauth-protocol
+    description: Protocolo OAuth (handlers do SDK MCP, bff-jboot-identity)
+  - name: oauth-connections
+    description: Consentimento e conexoes do usuario Flow (bff-jboot-identity)
+  - name: connector
+    description: Resource server MCP e configuracao (bff-jboot-platform)
+paths:
+  /.well-known/oauth-authorization-server:
+    get:
+      tags: [oauth-protocol]
+      summary: Metadata do authorization server (RFC 8414)
+      description: Anuncia CIMD (`client_id_metadata_document_supported`), cliente publico (`none`) e PKCE S256. Sem `registration_endpoint` (DCR desligado).
+      responses:
+        '200':
+          description: Metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizationServerMetadata' }
+  /oauth/authorize:
+    get:
+      tags: [oauth-protocol]
+      summary: Inicio da autorizacao (code + PKCE S256)
+      description: |
+        `client_id` e a URL HTTPS do documento CIMD do cliente (host allowlisted). Redirect
+        aceito: `https://claude.ai/api/mcp/auth_callback` ou loopback `localhost`/`127.0.0.1`
+        com qualquer porta. Sucesso redireciona para a tela de consentimento da Platform Web
+        (`/oauth/consentimento?request=<id>`); erro depois de validar o redirect volta ao
+        cliente com `error` (`invalid_target`, `invalid_scope`, `invalid_request`).
+      parameters:
+        - { name: response_type, in: query, required: true, schema: { const: code } }
+        - { name: client_id, in: query, required: true, schema: { type: string, format: uri } }
+        - { name: redirect_uri, in: query, required: true, schema: { type: string, format: uri } }
+        - { name: code_challenge, in: query, required: true, schema: { type: string } }
+        - { name: code_challenge_method, in: query, required: true, schema: { const: S256 } }
+        - { name: state, in: query, schema: { type: string } }
+        - { name: scope, in: query, schema: { type: string, example: 'flow:connector:read flow:connector:comment offline_access' } }
+        - { name: resource, in: query, schema: { type: string, format: uri, description: 'RFC 8707; precisa ser a URL exata do MCP' } }
+      responses:
+        '302': { description: Redireciona ao consentimento ou devolve erro ao redirect_uri }
+        '400': { description: client_id ou redirect_uri invalidos (nao redireciona) }
+  /oauth/token:
+    post:
+      tags: [oauth-protocol]
+      summary: Troca de codigo e rotacao de refresh token
+      description: Cliente publico (sem segredo). Refresh rotacionado a cada uso; reapresentar um refresh ou codigo ja usado revoga a conexao inteira.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [grant_type, client_id]
+              properties:
+                grant_type: { enum: [authorization_code, refresh_token] }
+                client_id: { type: string }
+                code: { type: string }
+                code_verifier: { type: string }
+                redirect_uri: { type: string }
+                refresh_token: { type: string }
+                resource: { type: string }
+      responses:
+        '200':
+          description: Tokens opacos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '400': { description: '`invalid_grant`, `invalid_target`, `invalid_scope`, `invalid_client`' }
+  /oauth/revoke:
+    post:
+      tags: [oauth-protocol]
+      summary: Revogacao pelo cliente (RFC 7009)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token, client_id]
+              properties: { token: { type: string }, client_id: { type: string } }
+      responses:
+        '200': { description: Revogado (ou ja invalido) }
+  /oauth/requests/{requestId}:
+    get:
+      tags: [oauth-connections]
+      summary: Pedido de autorizacao para a tela de consentimento
+      security: [{ flowUser: [] }]
+      parameters: [{ $ref: '#/components/parameters/RequestId' }]
+      responses:
+        '200':
+          description: Pedido pendente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthorizationRequestView' }
+        '403': { description: '`oauth_flow_session_required` (token sem destino Flow ativo)' }
+        '404': { description: '`oauth_request_not_found`' }
+        '410': { description: '`oauth_request_expired` (expirado ou ja decidido)' }
+  /oauth/requests/{requestId}/decision:
+    post:
+      tags: [oauth-connections]
+      summary: Consentir ou recusar (uso unico)
+      security: [{ flowUser: [] }]
+      parameters: [{ $ref: '#/components/parameters/RequestId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approve]
+              properties: { approve: { type: boolean } }
+      responses:
+        '200':
+          description: URL de retorno ao cliente (com `code` ou `error=access_denied`, `state` e `iss`)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [redirectUrl]
+                properties: { redirectUrl: { type: string, format: uri } }
+        '410': { description: '`oauth_request_expired`' }
+  /oauth/grants:
+    get:
+      tags: [oauth-connections]
+      summary: Conexoes ativas do usuario no tenant/modulo do token
+      security: [{ flowUser: [] }]
+      responses:
+        '200':
+          description: Conexoes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/GrantView' } }
+  /oauth/grants/{grantId}:
+    delete:
+      tags: [oauth-connections]
+      summary: Revogar uma conexao propria
+      security: [{ flowUser: [] }]
+      parameters:
+        - { name: grantId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Revogada }
+        '404': { description: '`oauth_grant_not_found` (inclusive conexao de outro usuario/tenant)' }
+  /oauth/introspect:
+    post:
+      tags: [oauth-connections]
+      summary: Introspeccao s2s (somente `platform-api`, audience `svc:identity-oauth`)
+      security: [{ serviceToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties: { token: { type: string } }
+      responses:
+        '200':
+          description: Resultado; `active=false` para token invalido, expirado, revogado, de outro recurso ou sem entitlement Flow
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Introspection' }
+        '401': { description: Token de servico invalido }
+        '403': { description: Chamador s2s nao permitido }
+  /.well-known/oauth-protected-resource/kanban/mcp:
+    get:
+      tags: [connector]
+      summary: Protected resource metadata (RFC 9728)
+      responses:
+        '200':
+          description: Metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProtectedResourceMetadata' }
+  /.well-known/oauth-protected-resource:
+    get:
+      tags: [connector]
+      summary: Protected resource metadata na raiz (mesmo conteudo)
+      responses:
+        '200':
+          description: Metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProtectedResourceMetadata' }
+  /kanban/mcp:
+    post:
+      tags: [connector]
+      summary: Endpoint MCP (Streamable HTTP, stateless, resposta JSON)
+      description: |
+        JSON-RPC MCP. Tools: `flow_list_boards`, `flow_search_cards`, `flow_get_card`
+        (leitura, scope `flow:connector:read`) e `flow_add_card_comment` (scope
+        `flow:connector:comment`). `flow_add_card_comment` aceita `runId` opcional (uuid):
+        comentario nao conclui o run (`runCompleted: false`). A tool
+        `flow_complete_automation` exige boardId, cardId, runId e confirmation
+        {version: 1, status: succeeded, allTasksCompleted: true}; somente ela conclui
+        o run dispatched do mesmo dono/card/tenant. Pode disparar a movimentacao
+        administrativa configurada; nunca recebe destino do modelo.
+        Validacao de cadastro (ADR 017): `flow_get_customer_validation_request`,
+        `flow_get_customer_document` (uma pagina por chamada como conteudo `image/jpeg`;
+        PDF convertido por pagina, ate 100; texto traz `pageCount` e, se o arquivo passar do
+        teto, `totalPages` e `truncated`) e `flow_submit_customer_validation`
+        (parecer aprovado/pendencias por documento e, na S6, `extractedData` opcional com os
+        campos de `customer_juridico`; o Flow normaliza e preenche so campo vazio da ficha e
+        devolve `appliedFields`, `keptFields` e `discardedFields`). O pedido traz a ficha
+        inteira (campo `null` = vazio) e `cpfOnIdentity`. Kit do escritorio (ADR 019): o pedido traz so os documentos
+        liberados para a validacao e `contractModel` (escritorio, versao e tags do modelo, sem blocos e sem as calculadas);
+        documento fora da lista responde `document_not_allowed`. O parecer aceita `tagValues`, `gender` e `waiverCourt`
+        so com `verdict = aprovado` (descartados nos demais), mais `generalFindings` e `alerts`; devolve
+        `kitTagsRecorded` e `discardedKitTags`. As tools da automacao listam e leem so os documentos liberados na regra
+        (`actionConfig.customerDocumentTypes`). Exigem `allowCustomerDocuments`
+        com aceite proprio do gestor; run da conta principal so atende a identidade central
+        e run de escritorio so um responsavel daquele escritorio (ADR 018); o CPF nao e
+        mascarado nessas tools.
+        Automacao de coluna (ADR 018, S5): `flow_get_card_customer` (ficha, parecer aprovado e
+        documentos validados do cliente do card) e `flow_get_card_customer_document` (pagina
+        como `image/jpeg`). So na execucao `dispatched` do dono da regra, no card dela, com
+        `allowCustomerDocuments`; cliente sem validacao aprovada responde
+        `customer_not_validated`, card sem cliente `card_without_customer`.
+        Analise de Acoes (docs/product/flow-action-analysis-sprints.md, A1): `flow_submit_action_analysis`
+        (`runId`, `status` concluida|nao_concluida, `failureReason`, `header`, `actions` por bloco
+        caixa|e|a|b|c|d com `bank`, `year`, `rootContract`, `observations` e `contracts`). Mesmas regras de
+        execucao das tools da automacao. Envio fora das regras por bloco ou com um contrato em dois blocos
+        responde `invalid_analysis` sem gravar; execucao ja encerrada responde `run_closed`. O envio aceito
+        encerra a execucao e devolve `analysisId`, `actionCount` e `automationCompleted` (concluida com ao
+        menos uma acao grava `ai.automation_completed`; o card anda pelas regras `ai_completed -> move_card`).
+        Resultado esperado (ADR 020): comentario nunca conclui. `flow_complete_automation` conclui so execucao
+        de regra `comment` (ou sem o campo); em `action_analysis` e `initial_petitions` responde
+        `wrong_completion_tool`, porque essas concluem pela ferramenta propria. `flow_submit_action_analysis`
+        em execucao que nao espera analise responde `wrong_expected_result` sem gravar. Peticoes iniciais expiram 30 min sem
+        chamada (`routine_no_answer`) ou 3 h depois do disparo (`routine_time_limit`).
+        Peticoes iniciais, leitura (S3 de docs/product/flow-initial-petitions-sprints.md): antes de chamar a
+        rotina o Flow confere cliente vinculado com validacao aprovada, UF do endereco da ficha e acoes ja
+        ajuizadas listadas ou confirmacao "sem acoes anteriores"; faltando algo, a execucao falha sem chamar
+        a rotina (`card_without_customer`, `customer_not_validated`, `customer_without_uf`,
+        `prior_lawsuits_missing`) com `card.automation_run_failed` no card. A mesma checagem roda em
+        `flow_get_card_customer`: se a condicao caiu depois do disparo, a execucao e encerrada e a tool
+        responde o codigo. Nessa automacao `flow_get_card_customer` traz `petition` (`uf`, `address`,
+        `birthDate`, `gender`, `priorLawsuits` com `status` listed|declared_none e `lawsuits` banco/numero,
+        `lawyer` nome/OAB/UF do advogado ativo do escritorio do card na UF ou nulo, `lawyerGap`
+        card_without_office|no_active_lawyer_for_uf); nas demais `petition` nao vem.
+        `flow_get_card_action_analysis` (`runId`, so em `initial_petitions`, senao `wrong_expected_result`):
+        Analise de Acoes concluida mais recente do card com `analysisId`, cabecalho e `actions` com
+        `actionId`; sem analise concluida, `analysis: null`.
+        Peticoes iniciais, envio no modo Flow (S5): `flow_create_hiscon_print` (`runId`, `figureId`,
+        `page`, `crop` e `highlight` em fracoes da imagem da pagina) recorta do HISCON da regra e devolve
+        a imagem PNG com moldura e sombreado; `flow_submit_initial_petition` (`runId`, `petitionKey`,
+        `actionIds`, `content` com court, fileBank, clientFirstName, addressing, elderlyPriority, body em
+        blocos title|heading|paragraph|quote|table|figure e calculation) confere e guarda a peticao como
+        provisoria (`invalid_petition` sem gravar; `generator_is_ai` quando a regra usa o gerador IA);
+        `flow_finish_initial_petitions` (`runId`, `status`, `failureReason`, `report`,
+        `actionsWithoutPetition`) monta os .docx, grava execucao, peticoes, vinculos, documentos rascunho
+        e julgados, encerra a execucao e, com ao menos uma peticao, grava `ai.automation_completed` (`invalid_finish` sem gravar;
+        `run_closed` quando ja encerrada). As tres so na execucao `initial_petitions` do dono, com
+        `allowCustomerDocuments`.
+        Erro de tool volta como `isError` com codigo estavel:
+        `claude_connector_disabled`, `connector_scope_missing`, `not_found`, `forbidden`,
+        `invalid_request`, `internal_error`.
+      security: [{ connectorToken: [] }]
+      responses:
+        '200': { description: Resposta JSON-RPC }
+        '401':
+          description: Sem token ou token invalido
+          headers:
+            WWW-Authenticate:
+              schema: { type: string, example: 'Bearer resource_metadata="https://apinode.jboot.com.br/.well-known/oauth-protected-resource/kanban/mcp", error="invalid_token"' }
+        '503': { description: Identity indisponivel para introspeccao (`temporarily_unavailable`) }
+    get:
+      tags: [connector]
+      summary: Nao suportado (sem stream SSE no modo stateless)
+      responses: { '405': { description: Method not allowed } }
+    delete:
+      tags: [connector]
+      summary: Nao suportado (sem sessao)
+      responses: { '405': { description: Method not allowed } }
+  /kanban/settings/claude-connector:
+    get:
+      tags: [connector]
+      summary: Estado do conector no tenant (qualquer usuario Flow)
+      security: [{ flowUser: [] }]
+      responses:
+        '200':
+          description: Configuracao
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaudeConnectorSettings' }
+    put:
+      tags: [connector]
+      summary: Ligar/desligar e mascaramento (somente `flow:admin`)
+      security: [{ flowUser: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, maskPersonalData]
+              properties:
+                enabled: { type: boolean }
+                maskPersonalData: { type: boolean }
+                acceptPolicy: { type: boolean, description: Obrigatorio na primeira habilitacao }
+      responses:
+        '200':
+          description: Configuracao salva
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaudeConnectorSettings' }
+        '400': { description: '`claude_connector_policy_required`' }
+        '403': { description: Sem `flow:admin` }
+components:
+  securitySchemes:
+    flowUser: { type: http, scheme: bearer, description: JWT de usuario com destino Flow (aud app:flow) }
+    serviceToken: { type: http, scheme: bearer, description: Token s2s do Identity, audience svc:identity-oauth }
+    connectorToken: { type: http, scheme: bearer, description: Access token opaco emitido por /oauth/token (nunca JWT) }
+  parameters:
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    AuthorizationServerMetadata:
+      type: object
+      properties:
+        issuer: { type: string }
+        authorization_endpoint: { type: string }
+        token_endpoint: { type: string }
+        revocation_endpoint: { type: string }
+        response_types_supported: { type: array, items: { type: string } }
+        grant_types_supported: { type: array, items: { type: string } }
+        code_challenge_methods_supported: { type: array, items: { const: S256 } }
+        token_endpoint_auth_methods_supported: { type: array, items: { const: none } }
+        scopes_supported: { type: array, items: { type: string } }
+        client_id_metadata_document_supported: { const: true }
+        authorization_response_iss_parameter_supported: { const: true }
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token, scope]
+      properties:
+        access_token: { type: string }
+        token_type: { const: Bearer }
+        expires_in: { type: integer }
+        refresh_token: { type: string }
+        scope: { type: string }
+    AuthorizationRequestView:
+      type: object
+      required: [id, clientHost, clientName, oauthClientId, redirectHost, loopbackRedirect, scopes, expiresAt, tenantName]
+      properties:
+        id: { type: string, format: uuid }
+        clientHost: { type: string, description: Host da URL do client_id; e quem pede acesso }
+        clientName: { type: string, description: Nome autodeclarado no documento CIMD }
+        oauthClientId: { type: string }
+        redirectHost: { type: string }
+        loopbackRedirect: { type: boolean }
+        scopes: { type: array, items: { type: string } }
+        expiresAt: { type: string, format: date-time }
+        tenantName: { type: string }
+    GrantView:
+      type: object
+      required: [id, clientName, scopes, createdAt, lastUsedAt]
+      properties:
+        id: { type: string, format: uuid }
+        clientName: { type: string }
+        scopes: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+    Introspection:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+        sub: { type: string, description: identity_id }
+        scope: { type: string }
+        client_id: { type: string, description: client_id OAuth (URL CIMD) }
+        exp: { type: integer }
+        aud: { type: string }
+        grant_id: { type: string }
+        tenant_client_id: { type: string }
+        application_id: { type: string }
+        database_ref: { type: string }
+        flow_scopes: { type: array, items: { type: string } }
+        flow_roles: { type: array, items: { type: string } }
+    ProtectedResourceMetadata:
+      type: object
+      properties:
+        resource: { type: string }
+        authorization_servers: { type: array, items: { type: string } }
+        scopes_supported: { type: array, items: { type: string } }
+        bearer_methods_supported: { type: array, items: { const: header } }
+        resource_name: { type: string }
+    ClaudeConnectorSettings:
+      type: object
+      required: [enabled, maskPersonalData, policyAcceptedAt, connectorUrl, canManage]
+      properties:
+        enabled: { type: boolean }
+        maskPersonalData: { type: boolean }
+        policyAcceptedAt: { type: [string, 'null'], format: date-time }
+        connectorUrl: { type: string }
+        canManage: { type: boolean }

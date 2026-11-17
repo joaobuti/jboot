@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">JBoot AI-first architecture workflow v3</title>
+  <desc id="desc">Modern neon circuit workflow for the JBoot AI-first architecture with orchestration agents, stack subagents, harness, adapters and satellite implementations.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="48%" r="78%">
+      <stop offset="0%" stop-color="#123b45"/>
+      <stop offset="43%" stop-color="#061821"/>
+      <stop offset="100%" stop-color="#01050b"/>
+    </radialGradient>
+    <linearGradient id="cyan" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#a7f3ff"/>
+      <stop offset="48%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ff7b9c"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#bbf7d0"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+    <linearGradient id="bluePanel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#092433"/>
+      <stop offset="100%" stop-color="#06131d"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="deepGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="52" height="52" patternUnits="userSpaceOnUse">
+      <path d="M52 0H0V52" fill="none" stroke="#155566" stroke-width="1" opacity=".28"/>
+    </pattern>
+    <marker id="arrC" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#67e8f9"/>
+    </marker>
+    <marker id="arrP" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#fb7185"/>
+    </marker>
+    <marker id="arrG" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#86efac"/>
+    </marker>
+    <style>
+      .title{font-family:Inter,Arial,sans-serif;font-size:40px;font-weight:900;fill:#f8feff;letter-spacing:0}
+      .sub{font-family:Inter,Arial,sans-serif;font-size:15px;font-weight:600;fill:#a5f3fc;letter-spacing:0}
+      .head{font-family:Inter,Arial,sans-serif;font-size:18px;font-weight:850;fill:#f8fafc;letter-spacing:0}
+      .text{font-family:Inter,Arial,sans-serif;font-size:13px;font-weight:650;fill:#c9f5fb;letter-spacing:0}
+      .mini{font-family:Inter,Arial,sans-serif;font-size:11px;font-weight:750;fill:#86efac;letter-spacing:0}
+      .tag{font-family:Inter,Arial,sans-serif;font-size:10px;font-weight:800;fill:#e0faff;letter-spacing:0}
+      .muted{font-family:Inter,Arial,sans-serif;font-size:11px;font-weight:600;fill:#8ea7b3;letter-spacing:0}
+      .panel{fill:rgba(3,15,24,.86);stroke:#22d3ee;stroke-width:2;filter:url(#glow)}
+      .panelP{fill:rgba(35,10,22,.84);stroke:#fb7185;stroke-width:2;filter:url(#glow)}
+      .panelG{fill:rgba(5,24,17,.84);stroke:#86efac;stroke-width:2;filter:url(#glow)}
+      .chip{fill:#04121c;stroke:#67e8f9;stroke-width:1.7}
+      .chipP{fill:#210917;stroke:#fb7185;stroke-width:1.7}
+      .chipG{fill:#061a12;stroke:#86efac;stroke-width:1.7}
+      .ghost{fill:rgba(15,23,42,.58);stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:7 7}
+      .wire{fill:none;stroke:url(#cyan);stroke-width:4;filter:url(#glow);marker-end:url(#arrC)}
+      .wireP{fill:none;stroke:url(#pink);stroke-width:4;filter:url(#glow);marker-end:url(#arrP)}
+      .wireG{fill:none;stroke:url(#green);stroke-width:4;filter:url(#glow);marker-end:url(#arrG)}
+      .trace{fill:none;stroke:#256575;stroke-width:2;opacity:.45}
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#grid)"/>
+  <g opacity=".78">
+    <polygon points="560,222 960,154 1360,222 960,292" fill="rgba(226,250,255,.06)" stroke="#e0faff" stroke-width="1.5"/>
+    <polygon points="560,222 960,292 960,650 560,580" fill="rgba(8,145,178,.08)" stroke="#22d3ee" stroke-width="1.5"/>
+    <polygon points="1360,222 960,292 960,650 1360,580" fill="rgba(71,85,105,.09)" stroke="#94a3b8" stroke-width="1.5"/>
+    <polygon points="560,580 960,650 1360,580 960,510" fill="rgba(20,184,166,.06)" stroke="#67e8f9" stroke-width="1.5"/>
+    <path d="M630 318H748Q778 318 778 348V406Q778 436 808 436H884" class="trace"/>
+    <path d="M1290 312H1170Q1140 312 1140 342V402Q1140 432 1110 432H1032" class="trace"/>
+    <path d="M724 546H842Q872 546 872 576V616" class="trace"/>
+    <path d="M1196 544H1082Q1052 544 1052 574V616" class="trace"/>
+    <circle cx="630" cy="318" r="5" fill="#67e8f9" filter="url(#deepGlow)"/>
+    <circle cx="1290" cy="312" r="5" fill="#e0faff" filter="url(#deepGlow)"/>
+    <circle cx="884" cy="436" r="4" fill="#22d3ee" filter="url(#deepGlow)"/>
+    <circle cx="1032" cy="432" r="4" fill="#94a3b8" filter="url(#deepGlow)"/>
+  </g>
+
+  <g opacity=".5">
+    <path class="trace" d="M90 250H270Q300 250 300 280V370Q300 400 330 400H500"/>
+    <path class="trace" d="M1560 178H1705Q1730 178 1730 203V310Q1730 335 1780 335"/>
+    <path class="trace" d="M180 910H360Q390 910 390 880V780Q390 750 500 750"/>
+    <path class="trace" d="M1420 910H1600Q1630 910 1630 880V780Q1630 750 1780 750"/>
+  </g>
+
+  <text x="72" y="70" class="title">JBoot AI-FIRST WORKFLOW</text>
+  <text x="74" y="102" class="sub">Agents, subagents de stack, skills, adapters e satelites em uma arquitetura governada por harness executavel</text>
+  <text x="1770" y="72" text-anchor="end" class="muted">theme: jb-cyan-white palette</text>
+
+  <g transform="translate(80 170)">
+    <rect width="430" height="330" rx="18" class="panel"/>
+    <text x="26" y="38" class="head" fill="#67e8f9">GLOBAL AGENTS</text>
+    <text x="26" y="66" class="text">Orquestracao antes de contrato e codigo</text>
+    <g transform="translate(28 96)">
+      <rect width="104" height="50" rx="10" class="chip"/><text x="52" y="25" text-anchor="middle" class="text">PO</text><text x="52" y="41" text-anchor="middle" class="mini">escopo</text>
+      <rect x="132" width="104" height="50" rx="10" class="chip"/><text x="184" y="25" text-anchor="middle" class="text">PE</text><text x="184" y="41" text-anchor="middle" class="mini">target</text>
+      <rect x="264" width="104" height="50" rx="10" class="chip"/><text x="316" y="25" text-anchor="middle" class="text">ARCH</text><text x="316" y="41" text-anchor="middle" class="mini">fit</text>
+    </g>
+    <g transform="translate(28 174)">
+      <rect width="168" height="56" rx="10" class="chipP"/><text x="84" y="26" text-anchor="middle" class="text">Marketing</text><text x="84" y="44" text-anchor="middle" class="mini">jb-cyan / copy</text>
+      <rect x="200" width="168" height="56" rx="10" class="ghost"/><text x="284" y="26" text-anchor="middle" class="text">UI/UX</text><text x="284" y="44" text-anchor="middle" class="mini">fluxo / tela</text>
+    </g>
+    <g transform="translate(28 258)">
+      <rect width="368" height="44" rx="10" class="chipG"/>
+      <text x="184" y="27" text-anchor="middle" class="text">Human confirmation quando ha risco, custo ou stack</text>
+    </g>
+  </g>
+
+  <g transform="translate(80 560)">
+    <rect width="430" height="270" rx="18" class="panel"/>
+    <text x="26" y="38" class="head" fill="#67e8f9">STACK SUBAGENTS</text>
+    <text x="26" y="66" class="text">Principais do mercado + catalogo completo</text>
+    <g transform="translate(28 98)">
+      <rect width="116" height="42" rx="9" class="chip"/><text x="58" y="26" text-anchor="middle" class="tag">Next/Web</text>
+      <rect x="134" width="116" height="42" rx="9" class="chip"/><text x="192" y="26" text-anchor="middle" class="tag">Node/TS</text>
+      <rect x="268" width="116" height="42" rx="9" class="chip"/><text x="326" y="26" text-anchor="middle" class="tag">Python</text>
+      <rect y="62" width="116" height="42" rx="9" class="chip"/><text x="58" y="88" text-anchor="middle" class="tag">Laravel/PHP</text>
+      <rect x="134" y="62" width="116" height="42" rx="9" class="chip"/><text x="192" y="88" text-anchor="middle" class="tag">AI/LLM</text>
+      <rect x="268" y="62" width="116" height="42" rx="9" class="ghost"/><text x="326" y="88" text-anchor="middle" class="tag">+14 refs</text>
+    </g>
+    <text x="28" y="228" class="mini">Alimentam Stack Fit Gate; nao executam no lugar dos agents locais.</text>
+  </g>
+
+  <g transform="translate(620 176)">
+    <polygon points="70,42 352,0 634,42 352,88" fill="url(#bluePanel)" stroke="#67e8f9" stroke-width="2" filter="url(#deepGlow)"/>
+    <polygon points="70,42 352,88 352,430 70,382" fill="#06131d" stroke="#22d3ee" stroke-width="2"/>
+    <polygon points="634,42 352,88 352,430 634,382" fill="#071a1f" stroke="#86efac" stroke-width="2"/>
+    <polygon points="70,382 352,430 634,382 352,338" fill="#051018" stroke="#67e8f9" stroke-width="2"/>
+    <text x="352" y="64" text-anchor="middle" class="head">AI-FIRST ENGINEERING HARNESS</text>
+    <text x="352" y="112" text-anchor="middle" class="text">Contexto deterministico + gates + evals + evidencia</text>
+    <g transform="translate(152 150)">
+      <g>
+        <rect width="180" height="54" rx="10" class="chip"/>
+        <text x="90" y="24" text-anchor="middle" class="text">Context</text>
+        <text x="90" y="42" text-anchor="middle" class="mini">make ai-context</text>
+      </g>
+      <g transform="translate(220 0)">
+        <rect width="180" height="54" rx="10" class="chipP"/>
+        <text x="90" y="24" text-anchor="middle" class="text">Conformance</text>
+        <text x="90" y="42" text-anchor="middle" class="mini">make ai-conformance</text>
+      </g>
+      <g transform="translate(0 86)">
+        <rect width="180" height="54" rx="10" class="chip"/>
+        <text x="90" y="24" text-anchor="middle" class="text">Evals</text>
+        <text x="90" y="42" text-anchor="middle" class="mini">regression gates</text>
+      </g>
+      <g transform="translate(220 86)">
+        <rect width="180" height="54" rx="10" class="chipG"/>
+        <text x="90" y="24" text-anchor="middle" class="text">Security</text>
+        <text x="90" y="42" text-anchor="middle" class="mini">tool matrix</text>
+      </g>
+    </g>
+    <g transform="translate(202 326)">
+      <rect width="300" height="58" rx="12" class="ghost"/>
+      <text x="150" y="25" text-anchor="middle" class="text">AI Product Runtime</text>
+      <text x="150" y="44" text-anchor="middle" class="mini">src/ai planejado</text>
+    </g>
+  </g>
+
+  <g transform="translate(690 690)">
+    <rect width="560" height="138" rx="18" class="panelG"/>
+    <text x="28" y="38" class="head" fill="#86efac">RUNTIME ADAPTERS</text>
+    <text x="28" y="66" class="text">Transportam a regra; nao viram fonte de verdade</text>
+    <g transform="translate(28 88)">
+      <rect width="104" height="32" rx="8" class="ghost"/><text x="52" y="21" text-anchor="middle" class="tag">Codex</text>
+      <rect x="124" width="104" height="32" rx="8" class="ghost"/><text x="176" y="21" text-anchor="middle" class="tag">Claude</text>
+      <rect x="248" width="104" height="32" rx="8" class="ghost"/><text x="300" y="21" text-anchor="middle" class="tag">Cursor</text>
+      <rect x="372" width="104" height="32" rx="8" class="ghost"/><text x="424" y="21" text-anchor="middle" class="tag">Copilot</text>
+    </g>
+  </g>
+
+  <g transform="translate(1400 180)">
+    <rect width="430" height="650" rx="18" class="panelP"/>
+    <text x="28" y="38" class="head" fill="#fb7185">IMPLEMENTACOES SATELITE</text>
+    <text x="28" y="66" class="text">Contratos locais + agents/skills locais</text>
+    <g transform="translate(28 100)">
+      <g>
+        <rect width="174" height="54" rx="10" class="chip"/>
+        <text x="87" y="24" text-anchor="middle" class="text">Identity Admin</text>
+        <text x="87" y="42" text-anchor="middle" class="mini">Next UI</text>
+      </g>
+      <g transform="translate(204 0)">
+        <rect width="170" height="54" rx="10" class="chip"/>
+        <text x="85" y="24" text-anchor="middle" class="text">Identity BFF</text>
+        <text x="85" y="42" text-anchor="middle" class="mini">NestJS</text>
+      </g>
+      <g transform="translate(0 80)">
+        <rect width="374" height="62" rx="10" class="chipG"/>
+        <text x="187" y="27" text-anchor="middle" class="text">Platform Shell</text>
+        <text x="187" y="47" text-anchor="middle" class="mini">PDV / Flow / Juridico / Comanda</text>
+      </g>
+      <g transform="translate(0 168)">
+        <rect width="374" height="62" rx="10" class="chipG"/>
+        <text x="187" y="27" text-anchor="middle" class="text">Platform BFF</text>
+        <text x="187" y="47" text-anchor="middle" class="mini">PDV / Flow / Juridico / Catalog / Clientes</text>
+      </g>
+      <g transform="translate(0 256)">
+        <rect width="174" height="54" rx="10" class="ghost"/>
+        <text x="87" y="24" text-anchor="middle" class="text">Juridico Worker</text>
+        <text x="87" y="42" text-anchor="middle" class="mini">portais</text>
+      </g>
+      <g transform="translate(204 256)">
+        <rect width="170" height="54" rx="10" class="chipP"/>
+        <text x="85" y="24" text-anchor="middle" class="text">Fiscal Service</text>
+        <text x="85" y="42" text-anchor="middle" class="mini">Laravel</text>
+      </g>
+      <g transform="translate(0 336)">
+        <rect width="174" height="54" rx="10" class="ghost"/>
+        <text x="87" y="24" text-anchor="middle" class="text">PDV Mobile</text>
+        <text x="87" y="42" text-anchor="middle" class="mini">offline</text>
+      </g>
+      <g transform="translate(204 336)">
+        <rect width="170" height="54" rx="10" class="chip"/>
+        <text x="85" y="24" text-anchor="middle" class="text">Sites Publicos</text>
+        <text x="85" y="42" text-anchor="middle" class="mini">landing / portfolio</text>
+      </g>
+      <g transform="translate(0 416)">
+        <rect width="374" height="54" rx="10" class="chipG"/>
+        <text x="187" y="24" text-anchor="middle" class="text">Observability Ops</text>
+        <text x="187" y="42" text-anchor="middle" class="mini">metrics / traces / runbooks</text>
+      </g>
+    </g>
+  </g>
+
+  <path d="M510 330C570 330 570 320 635 300" class="wire"/>
+  <path d="M510 694C590 694 590 470 638 452" class="wire"/>
+  <path d="M1250 380C1320 380 1320 340 1400 340" class="wireP"/>
+  <path d="M1250 758C1308 758 1328 740 1400 740" class="wireG"/>
+  <path d="M960 606V686" class="wire"/>
+  <path d="M1615 830C1615 930 304 930 304 830" class="wireG"/>
+
+  <g transform="translate(80 900)">
+    <rect width="1750" height="86" rx="16" fill="rgba(3,15,24,.82)" stroke="#67e8f9" stroke-width="2" filter="url(#glow)"/>
+    <text x="28" y="34" class="head">Contrato operacional</text>
+    <text x="28" y="60" class="text">PO/PE/Architect fecham escopo e stack; Marketing/UI-UX entram por natureza da entrega; stack subagents orientam; agents locais executam; harness valida.</text>
+    <text x="1718" y="34" text-anchor="end" class="mini">AI-first engineering: make ai-conformance</text>
+    <text x="1718" y="60" text-anchor="end" class="muted">AI product runtime: planejado em src/ai</text>
+  </g>
+</svg>

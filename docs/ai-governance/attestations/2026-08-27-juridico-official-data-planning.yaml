@@ -1,0 +1,99 @@
+schema_version: "1.0.0"
+execution_id: "20260827-juridico-official-data-planning-v1"
+date: "2026-08-27"
+mode: planning
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-juridico-data
+target_module: modules/juridico
+scope_paths:
+  - docs/ai-governance/attestations/2026-08-27-juridico-official-data-planning.yaml
+  - docs/ai-governance/evidence
+  - docs/api/juridico-data-sprint-1-bff-openapi.yaml
+  - docs/api/juridico-data-sprint-1-service-openapi.yaml
+  - docs/architecture/decisions/009-juridico-official-data-service.md
+  - docs/architecture/implementation-contracts.md
+  - docs/data/juridico-data-sprint-1-data-model.md
+  - docs/product/juridico-official-data-sprint-1-gate.md
+  - docs/product/juridico-official-data-sprint-1-ux.md
+  - docs/product/juridico-official-data-sprints.md
+  - implementations/README.md
+  - implementations/svc-jboot-juridico-data
+  - implementations/app-jboot-next-platform/AI_CONTEXT.md
+  - implementations/app-jboot-next-platform/modules
+  - implementations/bff-jboot-platform/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/modules
+  - implementations/wrk-jboot-juridico/AI_CONTEXT.md
+  - implementations/wrk-jboot-juridico/PROJECT_CONTRACT.md
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-commands/jboot-plan-feature.md
+  - docs/ai-commands/jboot-runtime-profile.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-juridico-data/PROJECT_CONTRACT.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-domain.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-integrations.md
+  - implementations/svc-jboot-juridico-data/skills/datajud-contract.md
+  - implementations/svc-jboot-juridico-data/skills/upstream-adaptation.md
+  - implementations/svc-jboot-juridico-data/skills/internal-service-security.md
+  - implementations/app-jboot-next-platform/modules/juridico/agents/juridico-web.md
+  - implementations/app-jboot-next-platform/modules/juridico/skills/juridico-web-ui.md
+instruction_set_sha256: "59024441b6096935b16c1e56961e97b24f7733446be402a52a44705e22f8763e"
+context_sha256:
+  implementations/svc-jboot-juridico-data/AI_CONTEXT.md: "364ab37fcb4f9e93d7838fdd9f7f03dd098026ad2845212c36e506c19f052306"
+  implementations/bff-jboot-platform/modules/juridico/AI_CONTEXT.md: "723e6840c5df506fcf1b01c342aabe1aa450ad4f0d0757427127ef9cb5e6cd20"
+  implementations/app-jboot-next-platform/modules/juridico/AI_CONTEXT.md: "c8c6c370fe2bcd4060e6d5f257c7bfe8f27d6a55e50d6f29f09d88883afbb2e9"
+  implementations/wrk-jboot-juridico/AI_CONTEXT.md: "bce4ebb9f25006a09302d33b9747f2162b33f7340bf82dfde2401deb8f8db23b"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-domain.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-integrations.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-juridico-data/skills/datajud-contract.md
+  - implementations/svc-jboot-juridico-data/skills/upstream-adaptation.md
+  - implementations/svc-jboot-juridico-data/skills/internal-service-security.md
+human_approval:
+  status: approved
+  evidence: >-
+    Usuario confirmou em 2026-08-27 o novo caminho com servico REST interno
+    baseado seletivamente no backend do MCP e solicitou materializar todo o
+    planejamento dentro do fluxo governado JBoot.
+security_review:
+  status: not_applicable
+  evidence:
+    - execucao restrita a planejamento, contratos e artefatos de governanca
+    - nenhum endpoint, dependencia, secret, banco, runtime ou chamada DataJud foi materializado
+    - security checklist completo permanece gate bloqueante da Sprint 1 funcional
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - tag upstream v0.1.0 resolvida para dcc1e4dfa0534809958eec05ad094be415ff2ce1
+  - OpenAPI YAML parse ok
+  - make ai-context
+  - make ai-contract-check
+  - make ai-check
+  - make ai-conformance
+result: >-
+  Planejamento governado do novo servico juridico-data concluido com ADR,
+  sprints, gate, OpenAPI interno/BFF, modelo de auditoria, contrato de projeto,
+  agents, skills, provenance, trust boundaries e Dev Runtime Profile; nenhum
+  codigo funcional foi criado.

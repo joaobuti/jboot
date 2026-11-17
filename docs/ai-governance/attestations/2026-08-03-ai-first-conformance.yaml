@@ -1,0 +1,63 @@
+schema_version: "1.0.0"
+execution_id: "20260803-ai-first-conformance-v1"
+date: "2026-08-03"
+mode: governance
+status: success
+runtime: codex
+model: not_exposed
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+scope_paths:
+  - AGENTS.md
+  - README.md
+  - .gitignore
+  - Makefile
+  - docs
+  - tools/ai
+  - .codex.d
+  - .claude
+  - .cursor
+  - .github
+  - .gitlab-ci.yml
+  - implementations
+  - src/ai
+instruction_sources:
+  - AGENTS.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/ai-governance/conformance/ai-first.yaml
+  - docs/skills/ai-first-governance/SKILL.md
+instruction_set_sha256: "aefac3f13f2eeb5f7ad94e3ab76e80506525fcc69f39d1963394da97d0ab5455"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: usuario autorizou todas as correcoes em 2026-08-03
+security_review:
+  status: passed
+  evidence:
+    - permissoes locais que imprimiam accessToken removidas e exemplo versionado endurecido
+    - trust boundaries e tool approval matrix validados
+    - hooks analisados por sintaxe e eval adversarial
+    - nenhum endpoint, query, DTO, storage ou dependencia de aplicacao alterado
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-conformance
+  - make ai-check
+  - make ai-diff-check
+  - python3 -m unittest discover -s tools/ai/tests
+  - python3 -m json.tool docs/ai-commands/claude-settings-hooks.example.json
+  - sh -n tools/ai/*.sh
+  - python3 -m py_compile tools/ai/*.py tools/ai/tests/*.py
+result: profile, enforcement, lifecycle, security, evals and evidence implemented

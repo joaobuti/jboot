@@ -1,0 +1,35 @@
+# Ajustes do stack implementations/ops-jboot-observability para o VPS jboot-prod
+# (docs/product/hostinger-vps-hosting-sprints.md). Aplicado por cima do
+# compose.yaml do projeto, sem alterar o runtime local:
+#   docker compose -p jboot-observability --env-file .env \
+#     -f compose.yaml -f compose.vps.yml up -d
+#
+# Continua sendo o runtime monolitico de no unico (ver PROJECT_CONTRACT.md:
+# production_readiness: blocked ate a Sprint 4 distribuida). Aqui ele serve
+# como observabilidade operacional interna do VPS, sem HA.
+services:
+  # MinIO deixou de distribuir imagens (Docker Hub sem as tags, quay.io 401).
+  # Copias espelhadas no registry do projeto, mesmas releases fixadas no contrato.
+  observability-minio:
+    image: ${OBS_REGISTRY:?}/minio:RELEASE.2025-09-07T16-13-09Z
+
+  minio-init:
+    image: ${OBS_REGISTRY:?}/minio-mc:RELEASE.2025-08-13T08-35-41Z
+
+  # Recebe OTLP dos servicos do JBoot pela rede jboot-observability (a mesma que
+  # o docker-compose.prod.yml declara como externa). Portas so em 127.0.0.1:
+  # o bind em 172.17.0.1 do runtime local nao e necessario no VPS.
+  otel-gateway:
+    ports: !override
+      - "127.0.0.1:14317:4317"
+      - "127.0.0.1:14318:4318"
+      - "127.0.0.1:13133:13133"
+    networks: [default, jboot-observability]
+
+  # Grafana so em 127.0.0.1:3300; acesso por tunel SSH:
+  #   ssh -L 3300:127.0.0.1:3300 jboot-vps   e abrir http://localhost:3300
+
+networks:
+  jboot-observability:
+    name: jboot-observability
+    external: true

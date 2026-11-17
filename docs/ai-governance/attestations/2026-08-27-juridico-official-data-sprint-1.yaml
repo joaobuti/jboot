@@ -1,0 +1,126 @@
+schema_version: "1.0.0"
+execution_id: "20260827-juridico-official-data-sprint-1-v1"
+date: "2026-08-27"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-juridico-data
+target_module: modules/juridico
+scope_paths:
+  - .env.example
+  - Makefile
+  - docker-compose.yml
+  - docker/postgres/init/050_juridico_data_capability.sql
+  - docker/postgres/init/051_juridico_data_query_audit.sql
+  - docs/ai-governance/attestations/2026-08-27-juridico-official-data-sprint-1.yaml
+  - docs/ai-governance/evidence
+  - docs/api/juridico-data-sprint-1-bff-openapi.yaml
+  - docs/api/juridico-data-sprint-1-service-openapi.yaml
+  - docs/product/juridico-official-data-sprint-1-gate.md
+  - docs/product/juridico-official-data-sprints.md
+  - docs/security/juridico-official-data-sprint-1.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-identity
+  - implementations/bff-jboot-platform
+  - implementations/svc-jboot-juridico-data
+  - tools/code-down.sh
+  - tools/code-up.sh
+instruction_sources:
+  - AGENTS.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-domain.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-integrations.md
+  - implementations/svc-jboot-juridico-data/skills/datajud-contract.md
+  - implementations/svc-jboot-juridico-data/skills/upstream-adaptation.md
+  - implementations/svc-jboot-juridico-data/skills/internal-service-security.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+  - implementations/bff-jboot-platform/agents/backend-node-typescript.md
+  - implementations/bff-jboot-platform/agents/platform-auth-context.md
+  - implementations/bff-jboot-platform/agents/platform-postgres.md
+  - implementations/bff-jboot-platform/skills/nest-module-pattern.md
+  - implementations/bff-jboot-platform/skills/tenant-context.md
+  - implementations/bff-jboot-platform/skills/api-contract.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/agents/platform-layout.md
+  - implementations/app-jboot-next-platform/agents/backend-contract-client.md
+  - implementations/app-jboot-next-platform/modules/juridico/agents/juridico-web.md
+  - implementations/app-jboot-next-platform/modules/juridico/agents/juridico-api-client.md
+  - implementations/app-jboot-next-platform/skills/next-module-pattern.md
+  - implementations/app-jboot-next-platform/skills/platform-design-system.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/app-jboot-next-platform/modules/juridico/skills/juridico-web-ui.md
+  - implementations/app-jboot-next-platform/modules/juridico/skills/juridico-api-client.md
+instruction_set_sha256: "a17f62eca2cdad97b5daa9ab8634a15325b1ce95d3c10933c462c4697ce06c91"
+context_sha256:
+  implementations/svc-jboot-juridico-data/AI_CONTEXT.md: "8f911fa5979294af5996fd05f98f26368822ad64e802c3e5d8ca8cf8a9c1c78b"
+  implementations/bff-jboot-identity/AI_CONTEXT.md: "036679b1a7df55be010e8cea016fe295ee9bb1683a2dda4a04d9bd5e8745e459"
+  implementations/bff-jboot-platform/modules/juridico/AI_CONTEXT.md: "82bda9f95c4d9c5e4f007e41114df5163861b010ae8cec2244bffbafab08e966"
+  implementations/app-jboot-next-platform/modules/juridico/AI_CONTEXT.md: "7f2d8e32699d8bbbe99dcba6d01b9cdd448addad0c2fde50a51d8b8233ab879d"
+agents:
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-domain.md
+  - implementations/svc-jboot-juridico-data/agents/juridico-data-integrations.md
+  - implementations/bff-jboot-identity/agents/backend-node-typescript.md
+  - implementations/bff-jboot-platform/agents/backend-node-typescript.md
+  - implementations/bff-jboot-platform/agents/platform-auth-context.md
+  - implementations/bff-jboot-platform/agents/platform-postgres.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/agents/platform-layout.md
+  - implementations/app-jboot-next-platform/agents/backend-contract-client.md
+  - implementations/app-jboot-next-platform/modules/juridico/agents/juridico-web.md
+  - implementations/app-jboot-next-platform/modules/juridico/agents/juridico-api-client.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-juridico-data/skills/datajud-contract.md
+  - implementations/svc-jboot-juridico-data/skills/upstream-adaptation.md
+  - implementations/svc-jboot-juridico-data/skills/internal-service-security.md
+  - implementations/bff-jboot-platform/skills/nest-module-pattern.md
+  - implementations/bff-jboot-platform/skills/tenant-context.md
+  - implementations/bff-jboot-platform/skills/api-contract.md
+  - implementations/app-jboot-next-platform/skills/next-module-pattern.md
+  - implementations/app-jboot-next-platform/skills/platform-design-system.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - implementations/app-jboot-next-platform/modules/juridico/skills/juridico-web-ui.md
+  - implementations/app-jboot-next-platform/modules/juridico/skills/juridico-api-client.md
+human_approval:
+  status: approved
+  evidence: >-
+    Usuario confirmou o novo caminho baseado em servico REST interno, pediu o
+    planejamento governado e autorizou iniciar e continuar a Sprint 1.
+security_review:
+  status: passed
+  evidence:
+    - checklist versionado em docs/security/juridico-official-data-sprint-1.md
+    - JWT de usuario permanece no BFF e JWT s2s usa issuer, audience, expiry e caller allowlist
+    - DataJud usa host e indices allowlisted, body limitado e nenhum dado processual em logs
+    - auditoria persiste HMAC versionado por tenant, sem numero CNJ bruto ou payload integral
+    - pip-audit sem vulnerabilidades e pnpm audit sem CVE critica apos swiper 12.2.0
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - upstream v0.1.0 e SHA dcc1e4dfa0534809958eec05ad094be415ff2ce1 verificados em clone temporario
+  - 12 testes Python, Ruff, mypy e pyright aprovados no container
+  - pip-audit --skip-editable sem vulnerabilidades conhecidas
+  - 11 testes Identity, lint, typecheck e build aprovados no container
+  - 177 testes Platform BFF, lint, typecheck e build aprovados no container
+  - 16 testes frontend, typecheck e build aprovados no container
+  - smoke Identity -> JWT s2s -> Juridico Data aprovado
+  - migrations 050 e 051 aplicadas no PostgreSQL local
+  - bash -n e docker compose config aprovados
+  - make ai-conformance e make ai-evidence
+result: >-
+  Sprint 1 entregue ponta a ponta com servico FastAPI stateless, DataJud
+  allowlisted, emissao JWT s2s no Identity, facade e auditoria HMAC no BFF,
+  rota operacional no frontend, runtime minimo, testes, security review e
+  provenance upstream.

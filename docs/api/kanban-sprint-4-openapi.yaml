@@ -1,0 +1,385 @@
+openapi: 3.1.0
+info:
+  title: JBoot Kanban (Flow) Sprint 4 API
+  version: 0.4.0
+  summary: >
+    Contrato incremental da Sprint 4: atribuicao multipla de card (CardAssignee), historico
+    cronologico unico (CardActivity, estilo Azure Boards) e anexos vinculados a um registro
+    do historico (CardAttachment) via MinIO. Estende docs/api/kanban-sprint-1-openapi.yaml e
+    docs/api/kanban-sprint-3-openapi.yaml; nao redefine rotas ja existentes.
+  x-implementation-status: >
+    Implementado em 2026-06-19/20. Limites de upload confirmados pelo usuario: 25MB por
+    arquivo, whitelist de content types, sem limite agregado por card na v1. Ver
+    docs/product/kanban-sprint-4-gate.md, secao "Decisoes De Implementacao". Download via
+    URL assinada com expiracao de 300s.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: CardAssignees
+  - name: CardActivities
+  - name: CardAttachments
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  required_claims:
+    - sub
+    - client_id
+    - application_id
+    - database_ref
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/assignees:
+    get:
+      tags: [CardAssignees]
+      summary: List assignees of a card.
+      security:
+        - bearerAuth: [flow:read]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      responses:
+        '200':
+          description: Assignees list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardAssignee'
+    post:
+      tags: [CardAssignees]
+      summary: Assign a board member to a card. Any active board_member can assign any other active board_member.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardAssigneeRequest'
+      responses:
+        '201':
+          description: Created assignee. Generates a system_event CardActivity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardAssignee'
+        '422':
+          description: identityId is not an active board_member of this board.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /kanban/boards/{boardId}/cards/{cardId}/assignees/{identityId}:
+    delete:
+      tags: [CardAssignees]
+      summary: Remove an assignee from a card. Generates a system_event CardActivity.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+        - name: identityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Assignee removed.
+  /kanban/boards/{boardId}/cards/{cardId}/activities:
+    get:
+      tags: [CardActivities]
+      summary: List the unified chronological feed (comments + system events) of a card.
+      security:
+        - bearerAuth: [flow:read]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Activities page, ordered by createdAt ascending.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardActivityPage'
+    post:
+      tags: [CardActivities]
+      summary: Post a free-text comment on a card.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardCommentRequest'
+      responses:
+        '201':
+          description: Created comment activity.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardActivity'
+  /kanban/boards/{boardId}/cards/{cardId}/activities/{activityId}/attachments:
+    get:
+      tags: [CardAttachments]
+      summary: List attachments of a specific activity record.
+      security:
+        - bearerAuth: [flow:read]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+        - $ref: '#/components/parameters/ActivityId'
+      responses:
+        '200':
+          description: Attachments list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardAttachment'
+    post:
+      tags: [CardAttachments]
+      summary: >
+        Upload a file attached to an existing activity record. multipart/form-data.
+        Size/content-type limits are pending decision (see x-pending-decision at document root).
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+        - $ref: '#/components/parameters/ActivityId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created attachment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardAttachment'
+        '413':
+          description: File exceeds the allowed size limit (25MB).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Content type not allowed (see whitelist in kanban-sprint-4-data-model.md).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /kanban/boards/{boardId}/cards/{cardId}/activities/{activityId}/attachments/{attachmentId}/download:
+    get:
+      tags: [CardAttachments]
+      summary: Get a signed/temporary download URL for an attachment.
+      security:
+        - bearerAuth: [flow:read]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+        - $ref: '#/components/parameters/ActivityId'
+        - name: attachmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Signed download URL with short expiration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentDownloadUrl'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ActivityId:
+      name: activityId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    PageMeta:
+      type: object
+      required: [limit, offset, total]
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+    CardAssignee:
+      type: object
+      required: [id, cardId, identityId, assignedByIdentityId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cardId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        assignedByIdentityId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    CreateCardAssigneeRequest:
+      type: object
+      required: [identityId]
+      properties:
+        identityId:
+          type: string
+          format: uuid
+    CardActivity:
+      type: object
+      required: [id, cardId, type, authorIdentityId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cardId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [comment, system_event]
+        authorIdentityId:
+          type: string
+          format: uuid
+        textContent:
+          type: [string, 'null']
+          description: Populated when type = comment.
+        eventPayload:
+          type: [object, 'null']
+          description: Populated when type = system_event.
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Immutable since creation. Basis for future lead/cycle time metrics.
+    CreateCardCommentRequest:
+      type: object
+      required: [textContent]
+      properties:
+        textContent:
+          type: string
+          minLength: 1
+    CardActivityPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardActivity'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    CardAttachment:
+      type: object
+      required: [id, activityId, fileName, contentType, sizeBytes, uploadedByIdentityId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        activityId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedByIdentityId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    AttachmentDownloadUrl:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

@@ -1,0 +1,229 @@
+/* Adaptado de Next-TS/src/assets/scss/pages/_job-landing.scss, escopado em .jb-landing-v3 */
+
+.jb-landing-v3 {
+  background-color: var(--bs-secondary-bg);
+  font-size: 15px;
+}
+
+.jb-landing-v3 .section {
+  padding: 90px 0;
+  position: relative;
+}
+
+@media (max-width: 767.98px) {
+  .jb-landing-v3 .section {
+    padding: 50px 0;
+  }
+}
+
+.jb-landing-v3 .navbar-landing {
+  padding: 10px 0;
+  transition: all 0.5s ease;
+  background-color: transparent;
+}
+
+.jb-landing-v3 .navbar-landing .nav-link {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bs-body-color);
+  padding: 14px;
+}
+
+.jb-landing-v3 .navbar-landing .nav-link:hover,
+.jb-landing-v3 .navbar-landing .nav-link.active {
+  color: #04758b !important;
+}
+
+.jb-landing-v3 .navbar-landing.is-sticky {
+  background-color: var(--bs-secondary-bg);
+  box-shadow: 0 1px 16px -2px rgba(56, 65, 74, 0.15);
+}
+
+@media (max-width: 991.98px) {
+  .jb-landing-v3 .navbar-landing {
+    background-color: var(--bs-secondary-bg);
+    box-shadow: 0 1px 16px -2px rgba(56, 65, 74, 0.15);
+    padding: 10px 8px;
+  }
+
+  .jb-landing-v3 .navbar-landing .nav-link {
+    padding: 8px 0;
+  }
+}
+
+.jb-landing-v3 .v3-hero-section {
+  position: relative;
+  padding: 165px 0 80px;
+  overflow-x: hidden;
+  background-color: rgba(var(--bs-light-rgb), 0.5);
+}
+
+.jb-landing-v3 .quick-nav-panel {
+  background-color: var(--bs-secondary-bg);
+  border-radius: var(--bs-border-radius);
+  overflow: hidden;
+  box-shadow: 0 1px 16px -2px rgba(56, 65, 74, 0.15);
+}
+
+.jb-landing-v3 .quick-nav-panel .nav-pill {
+  border-right: 1px solid var(--bs-border-color);
+}
+
+.jb-landing-v3 .quick-nav-panel .nav-pill:last-child {
+  border-right: none;
+}
+
+@media (max-width: 767.98px) {
+  .jb-landing-v3 .quick-nav-panel .nav-pill {
+    border-right: none;
+    border-bottom: 1px solid var(--bs-border-color);
+  }
+}
+
+.jb-landing-v3 .circle-effect {
+  position: absolute;
+  top: 0;
+  z-index: 0;
+  right: -55px;
+  margin: 0 auto;
+}
+
+.jb-landing-v3 .circle-effect .circle,
+.jb-landing-v3 .circle-effect .circle2,
+.jb-landing-v3 .circle-effect .circle3,
+.jb-landing-v3 .circle-effect .circle4 {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 50%;
+  margin: 0 auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.jb-landing-v3 .circle-effect .circle {
+  height: 240px;
+  width: 240px;
+  position: relative;
+}
+
+.jb-landing-v3 .circle-effect .circle2 {
+  height: 280px;
+  width: 280px;
+  top: -20px;
+  right: -20px;
+}
+
+.jb-landing-v3 .circle-effect .circle3 {
+  height: 320px;
+  width: 320px;
+  top: -40px;
+  right: -40px;
+}
+
+.jb-landing-v3 .circle-effect .circle4 {
+  height: 360px;
+  width: 360px;
+  top: -60px;
+  right: -60px;
+}
+
+@media (max-width: 991.98px) {
+  .jb-landing-v3 .circle-effect {
+    display: none;
+  }
+}
+
+.jb-landing-v3 .module-showcase {
+  position: relative;
+  z-index: 1;
+}
+
+.jb-landing-v3 .floating-card {
+  max-width: 240px;
+  position: absolute;
+  z-index: 2;
+  transition: all 0.5s ease;
+}
+
+.jb-landing-v3 .floating-card:hover {
+  transform: translateY(-5px);
+}
+
+.jb-landing-v3 .floating-card.inquiry-box {
+  left: -20px;
+  top: 70px;
+}
+
+.jb-landing-v3 .floating-card.application-box {
+  bottom: 30px;
+  right: -30px;
+}
+
+@media (max-width: 991.98px) {
+  .jb-landing-v3 .floating-card.inquiry-box,
+  .jb-landing-v3 .floating-card.application-box {
+    position: static;
+    margin: 8px 0;
+    max-width: 100%;
+  }
+}
+
+.jb-landing-v3 .hero-visual-panel {
+  background:
+    linear-gradient(135deg, rgba(6, 16, 24, 0.55), rgba(6, 16, 24, 0.82)),
+    url("/brand/jb-cyan.jpg") center / cover no-repeat;
+  border: 1px solid rgba(0, 217, 255, 0.35);
+  border-radius: var(--bs-border-radius-lg);
+  min-height: 320px;
+  position: relative;
+  z-index: 1;
+}
+
+.jb-landing-v3 .step-icon-effect {
+  height: 30px;
+  width: 30px;
+  position: absolute;
+  top: 0;
+  left: -2%;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    -55deg,
+    rgba(255, 255, 255, 0) 0.8px,
+    var(--jb-cyan, #00d9ff) 1.6px,
+    var(--jb-cyan, #00d9ff) 2px,
+    rgba(255, 255, 255, 0) 3.8px,
+    rgba(255, 255, 255, 0) 5px
+  );
+  z-index: 0;
+  opacity: 0.2;
+}
+
+.jb-landing-v3 .step-icon-effect ~ span {
+  position: relative;
+  z-index: 1;
+}
+
+.jb-landing-v3 .capability-card {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.jb-landing-v3 .capability-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 28px rgba(4, 117, 139, 0.12) !important;
+}
+
+.jb-landing-v3 .footer-list li a {
+  color: #9ba7b3;
+  padding: 7px 0;
+  display: block;
+  transition: all 0.3s ease-in-out;
+}
+
+.jb-landing-v3 .footer-list li a:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.jb-landing-v3 #back-to-top {
+  bottom: 35px;
+}

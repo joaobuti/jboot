@@ -1,0 +1,79 @@
+schema_version: "1.0.0"
+execution_id: "20261017-flow-email-automation-outbox"
+date: "2026-10-17"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker/postgres/init/088_kanban_automation_email_outbox.sql
+  - docs/ai-governance/attestations/2026-10-17-flow-email-automation-outbox.yaml
+  - docs/api/kanban-sprint-13-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/product/kanban-sprints.md
+  - docs/runbooks/flow-email-automations.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "c8703f334db7bf43e3110087dd0f443526bb19ed0b9309f109d2708911061bd3"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "d75b5fe483b7342f050ca6e94fdfdbac903a0dfa8f75883e8b495ef54ace7590"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "2a63011d7c655d929893f2453f3ee813f45f2c0a56851314720c54b83d4249b4"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "07bbf89640ac431b8b00bc504749e92b309ceffd6c8013245c8717d883630e30"
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-17 o usuario aprovou a recomendacao do item 4 ("otima sugestao,
+    pode implementar"): manter BullMQ/Valkey, sem RabbitMQ, com outbox no
+    PostgreSQL, envio unico por destinatario, falha terminal visivel com botao
+    Reprocessar e contador para alertas.
+security_review:
+  status: passed
+  evidence:
+    - docs/product/kanban-sprints.md
+    - docs/runbooks/flow-email-automations.md
+    - docs/api/kanban-sprint-13-openapi.yaml
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migration 088 aplicada no banco de dev
+  - BFF no container - type-check, lint, build e 589 testes (587 passam, 2 ignorados ja existentes; sobre fix/flow-domain-integrations)
+  - outbox com PostgreSQL real - derivacao por regra, varredura de 24 h, espera 1/2/4/8 min, falha terminal, retomada, agendado por dia, destinatario unico, lista por visibilidade
+  - movimentacao grava card.moved na mesma transacao (PostgreSQL real)
+  - Web no container - type-check, lint, 123 testes e next build
+  - E2E com BFF/Web reais - envio normal, queda entre evento e fila recuperada pela varredura, SMTP 421 ate falha terminal, Reprocessar (200, 409, 404, auditoria) e tela
+  - bug corrigido com teste de regressao - created_at Date quebrava o e-mail de coluna desde a Sprint 8
+result: >-
+  Sprint 13 do Kanban: automacoes de e-mail com outbox duravel no PostgreSQL,
+  evento card.moved na transacao da movimentacao, retentativa e falha terminal
+  no banco, envio unico por destinatario, metricas OpenTelemetry, tela Envios
+  de e-mail com Reprocessar. Corrige a retentativa do BullMQ que nunca reenviava.

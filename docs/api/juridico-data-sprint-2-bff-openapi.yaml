@@ -1,0 +1,84 @@
+openapi: 3.1.0
+info:
+  title: JBoot Juridico Data Monitoring BFF API
+  version: 1.0.0-draft
+paths:
+  /juridico/datajud/acompanhamentos:
+    get:
+      summary: Lista acompanhamentos do tenant autenticado
+      security: [{ juridicoUser: [juridico:read] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Pagina de acompanhamentos }
+    post:
+      summary: Cria acompanhamento com opt-in explicito
+      security: [{ juridicoUser: [juridico:write] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [processNumber, cadence]
+              properties:
+                processNumber: { type: string, minLength: 20, maxLength: 25 }
+                tribunal: { type: string, maxLength: 32 }
+                cadence: { type: string, enum: [daily, weekly, biweekly, monthly] }
+      responses:
+        '201': { description: Acompanhamento criado }
+        '409': { description: Processo ja monitorado pelo tenant }
+  /juridico/datajud/acompanhamentos/{monitorId}:
+    get:
+      summary: Retorna configuracao e estado do acompanhamento
+      security: [{ juridicoUser: [juridico:read] }]
+      parameters: [{ $ref: '#/components/parameters/MonitorId' }]
+      responses:
+        '200': { description: Acompanhamento do tenant }
+        '404': { description: Recurso inexistente no tenant }
+    patch:
+      summary: Atualiza cadencia ou estado do acompanhamento
+      security: [{ juridicoUser: [juridico:write] }]
+      parameters: [{ $ref: '#/components/parameters/MonitorId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                cadence: { type: string, enum: [daily, weekly, biweekly, monthly] }
+                state: { type: string, enum: [active, paused] }
+      responses:
+        '200': { description: Acompanhamento atualizado }
+    delete:
+      summary: Exclui acompanhamento e agenda purga apos periodo de retencao
+      security: [{ juridicoUser: [juridico:admin] }]
+      parameters: [{ $ref: '#/components/parameters/MonitorId' }]
+      responses:
+        '204': { description: Exclusao aceita; polling interrompido }
+  /juridico/datajud/acompanhamentos/{monitorId}/movimentacoes:
+    get:
+      summary: Lista movimentacoes normalizadas e eventos de diff
+      security: [{ juridicoUser: [juridico:read] }]
+      parameters:
+        - { $ref: '#/components/parameters/MonitorId' }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200': { description: Pagina de movimentacoes do tenant }
+components:
+  parameters:
+    MonitorId:
+      name: monitorId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  securitySchemes:
+    juridicoUser:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

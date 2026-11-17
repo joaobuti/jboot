@@ -1,0 +1,116 @@
+schema_version: "1.0.0"
+execution_id: "20261016-flow-customer-documents"
+date: "2026-10-16"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - .env.example
+  - docker-compose.yml
+  - docker/postgres/init/072_kanban_drive_client_oauth.sql
+  - docker/postgres/init/085_kanban_customer_documents.sql
+  - docker/postgres/init/086_kanban_customer_validation.sql
+  - docker/postgres/init/087_kanban_drive_customer_documents.sql
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/runbooks/flow-claude-connector.md
+  - docs/api/flow-customer-documents-openapi.yaml
+  - docs/security/flow-customer-documents-checklist.md
+  - docs/ai-governance/attestations/2026-10-16-flow-customer-documents.yaml
+  - docs/architecture/decisions/016-flow-drive-oauth-per-client-via-ui.md
+  - docs/product/kanban-sprints.md
+  - docs/runbooks/flow-drive-sync.md
+  - docs/architecture-graph/registry.yaml
+  - docs/architecture/decisions/017-flow-customer-documents-validation-drive.md
+  - docs/product/flow-customer-documents-sprints.md
+  - docs/product/sprint-juridico-flow.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "c68c3460ead827413796f3b59e398c3ffefc558a33cd5c6c303614344ad2d447"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "c2b87601f7737dcafbd0291fc69a2aa50bd300304ba397a45674a7f106abb0b6"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "2a412619b5644dc8e596b5993003b894c4507ee84c687b49520266f1e52e2ce0"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "7543742b14d49a70bb2d350866feee5dbbdcc4cd35dbfb77d595b8d1936de88f"
+agents:
+  - docs/agents/orchestration/ui-ux.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-16 o usuario decidiu: Drive por empresa, documentos da ficha
+    cadastral, botao Validar dados com agente Claude, pasta por CPF/CNPJ;
+    escolheu rotina Claude, confirmacao humana com 1 clique, peticoes na pasta
+    do cliente e "Aprovar e comecar"; definiu destino central unico (Drive e
+    conta Claude da empresa, qualquer que seja o funcionario); autorizou o
+    commit do planejamento e da integracao da ADR 016; definiu catalogo fixo
+    (RG/CNH, CPF, comprovante, declaracao condicional, extrato INSS/Promobank),
+    uploads opcionais para salvar e obrigatorios para validar; aprovou a S1,
+    o CNPJ fora do escopo e a validacao/confirmacao por flow:customers:write;
+    aprovou a S2 e autorizou avancar com todo o plano (S3); liberou o botao
+    Validar na listagem e os alertas visuais e o exercicio de restore.
+security_review:
+  status: passed
+  evidence:
+    - docs/architecture/decisions/016-flow-drive-oauth-per-client-via-ui.md
+    - docs/runbooks/flow-drive-sync.md
+    - docs/security/flow-customer-documents-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-architecture-graph-gate sem findings com nodes planned
+  - spike S0 registrado com fontes oficiais (MCP images, routines, routines-fire)
+  - ADR 016 integrada por cherry-pick de fcb7e67f4; conflitos so em docs, compose e arquivos gerados
+  - BFF no container - build e 583 testes sem falha (drive OAuth, cifra do token, configuracao)
+  - Platform Web no container - type-check, lint sem erro e 118 testes
+  - make ai-api-graph-gate e make ai-architecture-graph-gate sem erro
+  - S1 BFF no container - build e 593 testes sem falha (10 novos, repositorio com PostgreSQL real)
+  - S1 Web no container - type-check, lint sem erro, 122 testes e next build
+  - S1 E2E no navegador - CPF exigido, fila do cadastro novo, versao, terceiro, DOCX 415, download assinado, auditoria sem dado pessoal
+  - S2 BFF no container - build e 609 testes sem falha (16 novos; repositorio com PostgreSQL real; conversor com PDF real do Chromium)
+  - S2 Web no container - type-check, lint sem erro, 127 testes e next build
+  - S3 BFF no container - build e 614 testes sem falha (5 novos; confirmacao enfileira e reconciliacao com PostgreSQL real; pasta por CPF)
+  - Listagem - alertas de documentacao em lote e botao Validar; BFF 615 testes, Web 128 testes; navegador mostra alerta e resultado do disparo
+  - Exercicio de restore local - RTO ~2 s, RPO zero, 27 de 29 objetos ok (2 anexos de card antigos sem objeto), recursos do exercicio removidos
+  - S2 E2E - aceite proprio de documentos, configuracao central, 409 com ficha incompleta, disparo recusado vira failed, tools via OAuth real (pagina como JPEG, run alheio, parecer unico), confirmacao pela tela, auditoria sem CPF
+result: >-
+  Plano S0-S3, ADR 017 e nodes planned registrados para documentos da ficha do
+  cliente, validacao por rotina Claude central com confirmacao humana e
+  replica Drive por CPF/CNPJ. S0: Drive por empresa conectado pela tela (ADR
+  016) integrado ao branch; smoke com conta Google depende do app OAuth do JBoot.
+  S1: documentos versionados na ficha do cliente e CPF obrigatorio.
+  S2: Validar dados pela rotina Claude central, tools do conector com pagina
+  como imagem e confirmacao humana; smoke com rotina real pendente.
+  S3: documentos validados e novas peticoes vao para <raiz>/<CPF> no Drive da
+  empresa; smoke com conta Google pendente do app OAuth do JBoot.

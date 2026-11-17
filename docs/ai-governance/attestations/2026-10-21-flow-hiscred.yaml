@@ -1,0 +1,89 @@
+schema_version: 1.0.0
+execution_id: 20261021-flow-hiscon-hiscred
+date: '2026-10-21'
+mode: implementation
+status: success
+runtime: codex-desktop
+model: not_exposed
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+- implementations/bff-jboot-platform/src/modules/kanban/customer-documents
+- implementations/bff-jboot-platform/src/modules/kanban/customer-validation/customer-validation.service.spec.ts
+- implementations/bff-jboot-platform/src/modules/kanban/flow-customers/flow-customers.service.spec.ts
+- docs/ai-governance/attestations/2026-10-21-flow-hiscred.yaml
+- implementations/bff-jboot-platform/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/src/modules/kanban/components/customers/CustomerDocumentsStep.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/components/customers/CustomerValidationSettingsPage.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/components/customers/customer-documents.spec.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/components/customers/customer-validation.spec.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/kanban-api.ts
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- docker/postgres/init/095_kanban_customer_hiscred.sql
+- docs/api/flow-customer-documents-openapi.yaml
+- docs/product/flow-customer-documents-sprints.md
+- docs/security/flow-hiscred-checklist.md
+- implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md
+instruction_sources:
+- AGENTS.md
+- docs/AI-COMMANDS.md
+- docs/ai-commands/jboot-implement-feature.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/bff-jboot-platform/agents/backend-node-typescript.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/ai-first-governance/SKILL.md
+- implementations/bff-jboot-platform/PROJECT_CONTRACT.md
+- implementations/app-jboot-next-platform/PROJECT_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+instruction_set_sha256: e7b37b54e98ab51c28791bc53e8740c224bf083dc96903fa2e94703855e44fef
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: 7128de183c9ff4eef28847393b538f18e26a3aecccf0046ff3d206ece06ba4cc
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: b9bf1ad332cdeefb8562e5ae8744e7ad48ab863d9dafbcbe82cbddb4915b7845
+agents:
+- docs/agents/orchestration/ui-ux.md
+- implementations/bff-jboot-platform/agents/backend-node-typescript.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: Usuario solicitou renomear Extrato do INSS ou Promobank para HISCON e
+    adicionar upload HISCRED no cadastro de clientes Flow. Instrucao anterior exige
+    usar checkout do runtime sem trocar branches.
+security_review:
+  status: passed
+  evidence:
+  - docs/security/flow-hiscred-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- 'Inside jboot container at active flow-office-validation checkout: 35 backend document/validation
+  tests passed, including real PostgreSQL independent version histories and tenant
+  isolation'
+- 'Frontend full suite: 131 passed; backend and frontend typechecks passed'
+- Backend production build passed; frontend production build and runtime HTTP health
+  verified separately in runtime log
+- Migration 095 applied to local kanban database; existing extrato_beneficio rows
+  unchanged
+- make ai-check passed including API and Architecture Graph gates
+- 'Revisao conjunta (Claude Code, 2026-10-21): diff revisado; teste da listagem atualizado para 5 documentos pendentes; BFF 627 testes sem falha (2 ignorados ja existentes), Web 131; validacao real pela rotina do escritorio Manaus leu HISCON e HISCRED'
+result: HISCON retains legacy type and uploads; HISCRED follows existing upload/validation
+  flow. Prompt template covers both without overwriting private routines. Initially
+  inspected prior shared checkout; detected live runtime had moved to flow-office-validation
+  and transferred only scoped hunks preserving parallel office-validation changes.
+  No branch checkout, commit, push or new architecture/runtime boundary. Sprint terminal
+  closure remains pending combined review of dirty shared tree.

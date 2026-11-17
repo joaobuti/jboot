@@ -1,0 +1,107 @@
+schema_version: "1.0.0"
+execution_id: "20261006-tooling-architecture-graph-sprint-4"
+date: "2026-10-06"
+mode: governance
+status: success
+runtime: codex-desktop
+model: gpt-6.1-sol
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+scope_paths:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - .claude/agents/ai-graph-architect.md
+  - .codex.d/AGENTS.md
+  - .cursor/rules/jboot-ai-architecture.mdc
+  - .github/copilot-instructions.md
+  - Makefile
+  - docs/AI-COMMANDS.md
+  - docs/agents/orchestration
+  - docs/agents/README.md
+  - docs/ai-architecture.md
+  - docs/ai-commands
+  - docs/architecture-graph
+  - docs/product/api-graph-sprints.md
+  - docs/ai-governance/evals/scenarios.yaml
+  - docs/ai-governance/evidence
+  - docs/ai-governance/records/decisions
+  - docs/ai-governance/security/reviews
+  - docs/ai-governance/attestations/2026-10-06-tooling-architecture-graph-sprint-4.yaml
+  - implementations/svc-jboot-juridico-data/AI_CONTEXT.md
+  - implementations/svc-jboot-juridico-data/skills/datajud-contract.md
+  - tools/ai/architecture-graph.py
+  - tools/ai/architecture-graph-viewer
+  - tools/ai/run-architecture-graph-viewer.sh
+  - tools/ai/behavioral-evals.py
+  - tools/ai/tests/test_architecture_graph.py
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ai-graph-architect.md
+  - docs/agents/orchestration/README.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/agents/stacks/frontend-web.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/ai-commands/jboot-plan-feature.md
+  - docs/ai-commands/jboot-new-module.md
+instruction_set_sha256: "8e43d85da7c228cd624bc7a6bce61be9272319ba91d0e5ef9bc36d17f2a5a0c4"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ai-graph-architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/agents/stacks/frontend-web.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    O usuario aprovou a Sprint 4 em 2026-10-06 e esclareceu que a visualizacao
+    deve ser uma interface local propria ao estilo do Obsidian, sem usar Obsidian.
+    Em seguida aprovou explicitamente a implementacao do ai-graph-architect e a
+    definicao dos agents que o acionam e de seus respectivos triggers.
+security_review:
+  status: passed
+  evidence:
+    - viewer read-only servido exclusivamente em loopback
+    - graph.json validado e renderizado por React sem HTML arbitrario
+    - nenhum secret, PII, banco, endpoint de mutacao ou chamada externa
+    - npm audit sem vulnerabilidades e checklist documentado
+    - steward sem autoridade adicional; executor preserva ownership de escrita
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - python3 -m unittest discover -s tools/ai/tests -p 'test_*.py'
+  - python3 tools/ai/behavioral-evals.py
+  - make ai-api-graph-gate
+  - make ai-architecture-graph-gate
+  - make ai-architecture-context NODE=capability:architecture-graph DEPTH=1 LIMIT=20
+  - npm run test (Node.js 24 container)
+  - npm run typecheck (Node.js 24 container)
+  - npm run lint (Node.js 24 container)
+  - npm run build (Node.js 24 container)
+  - npm audit --audit-level=high (Node.js 24 container)
+  - browser smoke: search, selection, details, neighborhood focus, no console errors
+  - make ai-check
+  - make ai-conformance
+  - evals AIF-EVAL-GRAPH-004/005: routing e ownership nao exclusivo
+result: >-
+  Architecture Graph transversal implementado com baseline completo dos
+  contracts ativos, subgrafo HTTP, queries, gate de CI e viewer local proprio,
+  interativo, read-only e servido em loopback. AI Graph Architect implementado
+  como steward condicional, com matriz de handoff e escrita preservada nos
+  agents executores.

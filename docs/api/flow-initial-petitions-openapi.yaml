@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: Flow — Peticoes Iniciais (Ficha E Escritorio)
+  version: 0.2.0
+  description: |
+    S2, S5, S7 e S8 de docs/product/flow-initial-petitions-sprints.md (ADR 020 e emenda de 2026-10-29).
+    Acoes ja ajuizadas na ficha do cliente, com a confirmacao "sem acoes anteriores"; advogado (nome para
+    assinatura e uma OAB por UF) no cadastro do usuario do Flow; peticoes do card, aprovacao e versao
+    corrigida. Escritorios -> Advogados saiu na S7 (rotas /kanban/offices/{officeId}/lawyers). Cliente fora
+    da visibilidade da ficha (escritorio vinculado ou `flow:admin`) e escritorio de outro tenant
+    respondem 404. As ferramentas do conector das sprints seguintes ficam em
+    docs/api/kanban-claude-connector-openapi.yaml.
+servers:
+  - url: https://apinode.jboot.com.br
+security:
+  - bearerAuth: []
+paths:
+  /kanban/customers/{customerId}/prior-lawsuits:
+    parameters:
+      - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Acoes ja ajuizadas, confirmacao e historico (flow:customers:read ou flow:admin)
+      responses:
+        '200': { description: Situacao atual, content: { application/json: { schema: { $ref: '#/components/schemas/PriorLawsuits' } } } }
+        '404': { description: Cliente nao visivel }
+    post:
+      summary: Inclui acao ja ajuizada (flow:customers:write ou flow:admin); revoga a confirmacao vigente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [bank, processNumber]
+              properties:
+                bank: { type: string, minLength: 1, maxLength: 200 }
+                processNumber: { type: string, maxLength: 40, description: 'CNJ com ou sem mascara (20 digitos)' }
+      responses:
+        '201': { description: Situacao atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/PriorLawsuits' } } } }
+        '409': { description: '`prior_lawsuit_duplicate`: processo ja na lista do cliente' }
+        '422': { description: '`prior_lawsuit_number_invalid` (fora do padrao CNJ) ou `prior_lawsuit_bank_required`' }
+  /kanban/customers/{customerId}/prior-lawsuits/declaration:
+    parameters:
+      - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Confirma "cliente nao tem acoes anteriores" (idempotente)
+      responses:
+        '200': { description: Situacao atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/PriorLawsuits' } } } }
+        '409': { description: '`prior_lawsuits_listed`: ha acao na lista' }
+    delete:
+      summary: Desfaz a confirmacao vigente (`withdrawn`)
+      responses:
+        '200': { description: Situacao atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/PriorLawsuits' } } } }
+  /kanban/customers/{customerId}/prior-lawsuits/{lawsuitId}:
+    parameters:
+      - { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: lawsuitId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      summary: Remove a acao da lista (remocao logica, fica no historico)
+      responses:
+        '200': { description: Situacao atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/PriorLawsuits' } } } }
+        '404': { description: '`prior_lawsuit_not_found`' }
+  /kanban/settings/users/lawyers:
+    get:
+      summary: UFs com OAB por usuario do tenant (flow:admin), para a lista de usuarios
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [identityId, ufs]
+                      properties:
+                        identityId: { type: string, format: uuid }
+                        ufs: { type: array, items: { $ref: '#/components/schemas/Uf' } }
+  /kanban/settings/users/{identityId}/lawyer:
+    parameters:
+      - { name: identityId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Advogado do usuario (flow:admin); sem cadastro, signatureName nulo e oabs vazio
+      responses:
+        '200': { description: Cadastro, content: { application/json: { schema: { $ref: '#/components/schemas/UserLawyer' } } } }
+    put:
+      summary: Substitui o cadastro (flow:admin); oabs vazio remove. Auditoria sem nome nem numero
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [signatureName, oabs]
+              properties:
+                signatureName: { type: string, maxLength: 200, description: 'Obrigatorio quando ha OAB' }
+                oabs: { type: array, maxItems: 27, items: { $ref: '#/components/schemas/UserOab' } }
+      responses:
+        '200': { description: Salvo, content: { application/json: { schema: { $ref: '#/components/schemas/UserLawyer' } } } }
+        '422': { description: '`user_lawyer_oab_invalid`, `user_lawyer_uf_repeated` ou `user_lawyer_name_required`' }
+  /kanban/boards/{boardId}/cards/{cardId}/initial-petitions:
+    parameters:
+      - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Execucao de peticoes iniciais mais recente do card (S5); card invisivel responde 404
+      responses:
+        '200':
+          description: '`run` nulo quando o card nunca teve execucao de peticoes'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, canRegisterProtocol]
+                properties:
+                  canRegisterProtocol:
+                    type: boolean
+                    description: >-
+                      board_admin efetivo do board ou responsavel (assignee) pelo card com papel board_member
+                      (Sprint 2 de flow-card-actions). Controla o botao "Registrar numero do processo".
+                  run:
+                    type: [object, 'null']
+                    description: >-
+                      id, generator (flow|ai), status (concluida|nao_concluida), failureReason, triageSource
+                      (analysis|hiscon), actionAnalysisId, petitionCount, report (excludedContracts, pendingData,
+                      courtsToCheck, precedents, themesWithoutStateRuling, alerts, pendingDecisions,
+                      actionsWithoutPetition), closingGaps (card_without_office | office_without_city |
+                      no_assignee_lawyer_for_uf: o dado do fecho saiu XXXX), completed, createdAt e petitions (id,
+                      petitionKey, position, court, bank, fileName, actionIds, protocolNumber (CNJ, 20 digitos), protocoledAt,
+                      monitoringBoardId, monitoringCardId (card criado pela acao Monitorar), document
+                      com documentId, version, origin routine_petition|uploaded_edit, status
+                      rascunho|aprovado|substituido, approvedAt, approvedByName, pdfStatus, sizeBytes). document e a
+                      versao atual.
+  /kanban/boards/{boardId}/cards/{cardId}/initial-petitions/{petitionId}/protocol:
+    parameters:
+      - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: petitionId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Registra o numero do processo (CNJ) da peticao aprovada (Sprint 2 de flow-card-actions)
+      description: >-
+        Protocolo manual ate existir o automatico. So a peticao da execucao mais recente do card, com a versao
+        atual aprovada e sem numero. Confere digito verificador (mod 97) e tribunal (segmento J.TR). Unico por
+        tenant: outra peticao ou card exportado do DataJud com o mesmo numero respondem 409 com o link do card.
+        Corrigir ou desvincular o numero nao existe nesta versao. Com numero, a versao corrigida e recusada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [processNumber]
+              properties:
+                processNumber: { type: string, maxLength: 25, description: '20 digitos ou NNNNNNN-DD.AAAA.J.TR.OOOO' }
+      responses:
+        '200': { description: 'Mesmo corpo do GET (run + canRegisterProtocol), ja com o numero' }
+        '403': { description: '`petition_protocol_forbidden`: nem board_admin nem responsavel pelo card' }
+        '404': { description: 'Card invisivel ou `petition_not_found`' }
+        '409': { description: '`petition_not_approved`, `petition_protocol_already_registered` ou `process_number_in_use` (com `cardId` e `cardUrl`)' }
+        '422': { description: '`invalid_process_number` ou `process_number_tribunal_unknown`' }
+  /kanban/boards/{boardId}/cards/{cardId}/initial-petitions/documents/{documentId}/download:
+    parameters:
+      - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: URL assinada de download do .docx (nome Inicial_[JEC|JEF]_[Banco]_[PrimeiroNome].docx)
+      responses:
+        '200': { description: '{ url, expiresAt }' }
+        '404': { description: '`petition_document_not_found`' }
+  /kanban/boards/{boardId}/cards/{cardId}/initial-petitions/documents/{documentId}/approve:
+    parameters:
+      - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Aprova a peticao (flow:petition:approve ou flow:admin); pede o PDF e libera a replica no Drive
+      responses:
+        '200': { description: 'Mesmo corpo do GET da execucao' }
+        '403': { description: Sem a permissao }
+        '409': { description: '`petition_document_not_reviewable` (nao esta em rascunho)' }
+  /kanban/boards/{boardId}/cards/{cardId}/initial-petitions/documents/{documentId}/corrected-version:
+    parameters:
+      - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: >-
+        Versao corrigida (S8; flow:petition:approve ou flow:admin): .docx ate 10 MB com a conferencia da versao
+        editada (macro, OLE, vinculo externo, zip-bomb). Sobre a versao atual de peticao sem protocolo; a
+        corrigida entra pendente de aprovacao e a anterior vira substituido. Aprovada, atualiza o mesmo
+        arquivo da peticao no Drive.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: 'Corpo do GET da execucao com documentId (a corrigida) e warnings da conferencia' }
+        '403': { description: Sem a permissao }
+        '404': { description: '`petition_document_not_found`' }
+        '409': { description: '`petition_protocoled` ou `petition_document_not_current`' }
+        '413': { description: '`document_too_large`' }
+        '415': { description: '`document_content_type_not_allowed`' }
+        '422': { description: 'Pacote recusado pela conferencia (macro, objeto embutido, vinculo externo)' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    Uf:
+      type: string
+      enum: [AC, AL, AP, AM, BA, CE, DF, ES, GO, MA, MT, MS, MG, PA, PB, PR, PE, PI, RJ, RN, RS, RO, RR, SC, SP, SE, TO]
+    PriorLawsuits:
+      type: object
+      required: [customerId, status, lawsuits, declaration, history]
+      properties:
+        customerId: { type: string, format: uuid }
+        status: { type: string, enum: [listed, declared_none, missing] }
+        lawsuits:
+          type: array
+          items:
+            type: object
+            required: [id, bank, processNumber, createdAt, createdByName]
+            properties:
+              id: { type: string, format: uuid }
+              bank: { type: string }
+              processNumber: { type: string, pattern: '^[0-9]{7}-[0-9]{2}\.[0-9]{4}\.[0-9]\.[0-9]{2}\.[0-9]{4}$' }
+              createdAt: { type: string, format: date-time }
+              createdByName: { type: [string, 'null'] }
+        declaration:
+          type: [object, 'null']
+          required: [declaredAt, declaredByName, origin]
+          properties:
+            declaredAt: { type: string, format: date-time }
+            declaredByName: { type: [string, 'null'] }
+            origin:
+              type: string
+              enum: [manual, default]
+              description: default = marcada pelo Flow ao cadastrar ou vincular o cliente (migration 111); manual = confirmada por uma pessoa
+        history:
+          type: array
+          description: Mais recente primeiro
+          items:
+            type: object
+            required: [kind, at, byName]
+            properties:
+              kind: { type: string, enum: [lawsuit_added, lawsuit_removed, declared_none, declaration_revoked] }
+              at: { type: string, format: date-time }
+              byName: { type: [string, 'null'] }
+              bank: { type: string }
+              processNumber: { type: string }
+              reason: { type: string, enum: [lawsuit_added, withdrawn] }
+              origin: { type: string, enum: [manual, default], description: Somente em declared_none }
+    UserOab:
+      type: object
+      additionalProperties: false
+      required: [uf, number]
+      properties:
+        uf: { $ref: '#/components/schemas/Uf' }
+        number: { type: string, maxLength: 20, description: 'Ate 7 digitos; letra final na suplementar' }
+    UserLawyer:
+      type: object
+      required: [identityId, signatureName, oabs]
+      properties:
+        identityId: { type: string, format: uuid }
+        signatureName: { type: [string, 'null'] }
+        oabs: { type: array, items: { $ref: '#/components/schemas/UserOab' } }

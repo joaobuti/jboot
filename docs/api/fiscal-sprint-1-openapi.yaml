@@ -1,0 +1,373 @@
+openapi: "3.1.0"
+info:
+  title: svc-jboot-fiscal
+  version: "1.0.0"
+  description: |
+    Serviço auto-hospedado de emissão de documentos fiscais (NFC-e e NF-e).
+    Comunicação síncrona, autenticação via JWT de serviço (Identity Hub JWKS).
+
+servers:
+  - url: http://localhost:8090/api
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Endereco:
+      type: object
+      required: [logradouro, numero, bairro, municipio, uf, cep, codigo_municipio]
+      properties:
+        logradouro: { type: string }
+        numero: { type: string }
+        complemento: { type: string }
+        bairro: { type: string }
+        municipio: { type: string }
+        uf: { type: string, minLength: 2, maxLength: 2 }
+        cep: { type: string, pattern: "^\\d{8}$" }
+        codigo_municipio: { type: string, pattern: "^\\d{7}$" }
+
+    Emitente:
+      type: object
+      required: [cnpj, razao_social, ie, uf, crt, endereco]
+      properties:
+        cnpj: { type: string, pattern: "^\\d{14}$" }
+        razao_social: { type: string }
+        ie: { type: string }
+        crt: { type: integer, default: 1, description: "1=SN, 2=SN Excesso, 3=RN" }
+        endereco: { $ref: "#/components/schemas/Endereco" }
+
+    Destinatario:
+      type: object
+      properties:
+        cpf: { type: string }
+        cnpj: { type: string }
+        nome: { type: string }
+        email: { type: string }
+        endereco: { $ref: "#/components/schemas/Endereco" }
+        ind_ie_dest: { type: integer, default: 9 }
+
+    ImpostosItem:
+      type: object
+      properties:
+        v_bc: { type: number }
+        p_icms: { type: number }
+        v_icms: { type: number }
+        csosn_icms: { type: string }
+        p_pis: { type: number }
+        v_pis: { type: number }
+        cst_pis: { type: string }
+        p_cofins: { type: number }
+        v_cofins: { type: number }
+        cst_cofins: { type: string }
+
+    Item:
+      type: object
+      required: [codigo, descricao, ncm, cfop, unidade, quantidade, valor_unitario, valor_total, impostos]
+      properties:
+        codigo: { type: string }
+        descricao: { type: string }
+        ncm: { type: string, pattern: "^\\d{8}$" }
+        cfop: { type: string, pattern: "^\\d{4}$" }
+        cest: { type: string, pattern: "^\\d{7}$" }
+        unidade: { type: string }
+        quantidade: { type: number }
+        valor_unitario: { type: number }
+        valor_total: { type: number }
+        gtin: { type: string }
+        impostos: { $ref: "#/components/schemas/ImpostosItem" }
+
+    Pagamento:
+      type: object
+      required: [forma_pagamento, valor]
+      properties:
+        forma_pagamento: { type: integer, description: "01=dinheiro, 03=cartão crédito, 04=cartão débito, 15=boleto, 17=PIX" }
+        valor: { type: number }
+        troco: { type: number }
+
+    Totais:
+      type: object
+      required: [v_bc, v_icms, v_prod, v_nf, v_pis, v_cofins]
+      properties:
+        v_bc: { type: number }
+        v_icms: { type: number }
+        v_prod: { type: number }
+        v_nf: { type: number }
+        v_pis: { type: number }
+        v_cofins: { type: number }
+        v_desc: { type: number, default: 0 }
+        v_frete: { type: number, default: 0 }
+        v_seg: { type: number, default: 0 }
+        v_outro: { type: number, default: 0 }
+
+    DadosNfce:
+      type: object
+      required: [data_emissao, presenca, emitente, itens, pagamentos, totais]
+      properties:
+        data_emissao: { type: string, format: date-time }
+        presenca: { type: integer }
+        cpf_consumidor: { type: string, pattern: "^\\d{11}$" }
+        emitente: { $ref: "#/components/schemas/Emitente" }
+        itens: { type: array, items: { $ref: "#/components/schemas/Item" }, minItems: 1 }
+        pagamentos: { type: array, items: { $ref: "#/components/schemas/Pagamento" }, minItems: 1 }
+        totais: { $ref: "#/components/schemas/Totais" }
+        inf_adicional: { type: string }
+
+    DadosNfe:
+      allOf:
+        - $ref: "#/components/schemas/DadosNfce"
+        - type: object
+          required: [natureza_operacao, finalidade, consumidor_final]
+          properties:
+            natureza_operacao: { type: string }
+            finalidade: { type: integer, default: 1, description: "1=Normal, 2=Complementar, 3=Ajuste, 4=Devolução" }
+            consumidor_final: { type: integer, default: 0, description: "0=Normal, 1=Consumidor final" }
+            destinatario: { $ref: "#/components/schemas/Destinatario" }
+
+    ResultadoEmissao:
+      type: object
+      properties:
+        fiscal_document_id: { type: string, format: uuid }
+        request_id: { type: string }
+        chave_acesso: { type: string }
+        protocolo: { type: string }
+        status: { type: string, enum: [authorized, contingency, rejected] }
+        data_autorizacao: { type: string, format: date-time }
+        danfe_pdf_base64: { type: string, format: byte }
+        deduplicated: { type: boolean }
+
+    FiscalConfig:
+      type: object
+      required: [cnpj_emitente, ambiente, razao_social, inscricao_estadual, address_logradouro, address_numero, address_bairro, address_municipio, address_uf, address_cep, address_codigo_municipio, serie_nfce, serie_nfe, regime_fiscal]
+      properties:
+        cnpj_emitente: { type: string, pattern: "^\\d{14}$" }
+        ambiente: { type: string, enum: [homologacao, producao] }
+        razao_social: { type: string }
+        nome_fantasia: { type: string }
+        inscricao_estadual: { type: string }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        address_logradouro: { type: string }
+        address_numero: { type: string }
+        address_complemento: { type: string }
+        address_bairro: { type: string }
+        address_municipio: { type: string }
+        address_uf: { type: string, minLength: 2, maxLength: 2 }
+        address_cep: { type: string, pattern: "^\\d{8}$" }
+        address_codigo_municipio: { type: string, pattern: "^\\d{7}$" }
+        serie_nfce: { type: integer, minimum: 1, maximum: 999 }
+        serie_nfe: { type: integer, minimum: 1, maximum: 999 }
+        csc: { type: string, writeOnly: true, description: "Segredo aceito apenas na escrita; nunca retornado." }
+        csc_configured: { type: boolean, readOnly: true }
+        csc_id: { type: string }
+        regime_fiscal: { type: string, enum: [simples, lucro_presumido, lucro_real] }
+        cfop_padrao_nfce: { type: string, pattern: "^\\d{4}$" }
+        cfop_padrao_nfe: { type: string, pattern: "^\\d{4}$" }
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  /v1/config:
+    get:
+      summary: Listar configurações fiscais do tenant autenticado
+      responses:
+        "200":
+          description: Configurações sem exposição do CSC
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/FiscalConfig" } }
+    put:
+      summary: Criar ou atualizar configuração fiscal por CNPJ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FiscalConfig" }
+      responses:
+        "200":
+          description: Configuração salva sem exposição do CSC
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FiscalConfig" }
+        "422": { description: Configuração inválida }
+
+  /v1/emissao/nfce:
+    post:
+      summary: Emitir NFC-e
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, cnpj_emitente, dados_documento]
+              properties:
+                request_id: { type: string, format: uuid }
+                cnpj_emitente: { type: string, pattern: "^\\d{14}$" }
+                dados_documento: { $ref: "#/components/schemas/DadosNfce" }
+      responses:
+        "201":
+          description: Autorizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoEmissao" }
+        "202":
+          description: Em contingência
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoEmissao" }
+        "422":
+          description: Rejeitada pela SEFAZ
+        "409":
+          description: Certificado expirado
+
+  /v1/emissao/nfe:
+    post:
+      summary: Emitir NF-e
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, cnpj_emitente, dados_documento]
+              properties:
+                request_id: { type: string, format: uuid }
+                cnpj_emitente: { type: string, pattern: "^\\d{14}$" }
+                dados_documento: { $ref: "#/components/schemas/DadosNfe" }
+      responses:
+        "201":
+          description: Autorizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoEmissao" }
+        "202":
+          description: Em contingência
+        "422":
+          description: Rejeitada pela SEFAZ
+        "409":
+          description: Certificado expirado
+
+  /v1/documentos/{id}/status:
+    get:
+      summary: Consultar status do documento
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Status do documento
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fiscal_document_id: { type: string }
+                  request_id: { type: string }
+                  tipo_documento: { type: string }
+                  chave_acesso: { type: string }
+                  protocolo: { type: string }
+                  status: { type: string }
+                  data_emissao: { type: string }
+                  data_autorizacao: { type: string }
+                  danfe_pdf_base64: { type: string }
+        "404":
+          description: Documento não encontrado
+
+  /v1/documentos/{id}/cancelamento:
+    post:
+      summary: Cancelar documento fiscal
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [justificativa]
+              properties:
+                justificativa: { type: string, minLength: 15, maxLength: 255 }
+      responses:
+        "200":
+          description: Cancelado com sucesso
+        "422":
+          description: Prazo expirado ou status inválido
+
+  /v1/documentos/{id}/cce:
+    post:
+      summary: Carta de Correção Eletrônica (CC-e) — apenas NF-e
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [correcao]
+              properties:
+                correcao: { type: string, minLength: 15, maxLength: 1000 }
+      responses:
+        "200":
+          description: CC-e registrada
+        "422":
+          description: Tipo não permitido ou limite atingido
+
+  /v1/numeracao/inutilizacao:
+    post:
+      summary: Inutilizar intervalo de numeração
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cnpj_emitente, tipo_documento, serie, numero_inicial, numero_final, justificativa, ambiente]
+              properties:
+                cnpj_emitente: { type: string, pattern: "^\\d{14}$" }
+                tipo_documento: { type: string, enum: [nfe, nfce] }
+                serie: { type: integer, minimum: 1 }
+                numero_inicial: { type: integer, minimum: 1 }
+                numero_final: { type: integer, minimum: 1 }
+                justificativa: { type: string, minLength: 15, maxLength: 255 }
+                ambiente: { type: string, enum: [homologacao, producao] }
+      responses:
+        "200":
+          description: Inutilização registrada

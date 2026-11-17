@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "jboot-ai-first-engineering",
+  "profile_version": "1.1.0",
+  "evaluated_at": "2026-11-14T19:55:01+00:00",
+  "revision": "970b90cac84fe9490b8fce34a705a83664325fae",
+  "branch": "fix/ai-check-main",
+  "working_tree_dirty": true,
+  "working_tree_sha256": "3ba4203a7d1157a6e95f83750f8953ae6e02d6a0b6cb1125df031f2d97cd037a",
+  "profile_sha256": "7a3c25db9c9284d5c7006b7ae1583c1fba75bf44aa5632a16fa826cfa274f222",
+  "status": "conformant",
+  "coverage": {
+    "projects": 13,
+    "modules": 13,
+    "fresh_contexts": 26,
+    "owned_agent_skill_artifacts": 136,
+    "conformant_runtime_adapters": 4,
+    "valid_metric_rows": 9,
+    "valid_attestations": 54,
+    "registered_deterministic_eval_scenarios": 42,
+    "nonconformities_total": 8,
+    "open_high_critical_nonconformities": 0
+  },
+  "errors": [],
+  "warnings": [
+    "docs/ai-governance/attestations/2026-10-15-anthropic-credentials-correction.yaml instruction_set_sha256 not revalidated for historical revision 8903d9fbf plus accompanying correction diff",
+    "docs/ai-governance/attestations/2026-10-15-anthropic-executor.yaml instruction_set_sha256 not revalidated for historical revision 21bedcc22",
+    "docs/ai-governance/attestations/2026-10-15-openai-provider.yaml instruction_set_sha256 not revalidated for historical revision 34e0db626 plus OpenAI increment"
+  ]
+}

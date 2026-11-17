@@ -1,0 +1,292 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 1 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 1 de docs/product/flow-crm-leads-sprints.md:
+    cliente final titular do card (lead), vindo do nucleo establishment-customers
+    (ADR 013) somente pelos servicos Nest exportados. Estende os contratos
+    docs/api/kanban-sprint-*-openapi.yaml; nao redefine rotas existentes.
+  x-implementation-status: >
+    Implementado em 2026-10-10 em
+    implementations/bff-jboot-platform/src/modules/kanban/customers/.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: CardCustomer
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  personal_data:
+    cpf_transport: request body only (never path/query)
+    logs_and_events: CPF and personal data never logged; system_event payload carries customerId and field names only
+  visibility_rule: >
+    Dado do cliente so e devolvido a membro ATIVO de algum quadro com card nao
+    excluido (arquivado conta) vinculado ao cliente, no mesmo client_id. A
+    checagem roda no banco do Flow antes de qualquer leitura de dado do cliente.
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/customer:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    get:
+      tags: [CardCustomer]
+      summary: Painel "Cliente" do card. Somente membro ativo do quadro (qualquer papel).
+      security:
+        - bearerAuth: [flow:read]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardCustomerPanel' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [CardCustomer]
+      summary: Vincula ou troca o cliente titular do card por CPF.
+      description: >
+        CPF novo exige `customer` (cria nucleo + customer_juridico e vincula).
+        CPF existente e visivel vincula o existente e ignora `customer`/`juridico`.
+        CPF existente fora dos quadros do usuario e bloqueado com 409
+        `customer_outside_boards`, sem vincular, sem duplicar e sem dados
+        (Sprint 3: `flow:admin` pode vincular com `override: { reason }`; ver
+        flow-crm-leads-sprint-3-openapi.yaml).
+        Mesma permissao das mutacoes de card (board_admin/board_member, coluna
+        editavel pelo MemberProfile).
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkCardCustomer' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardCustomerLinkResult' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Cliente cadastrado fora dos quadros do usuario.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string, const: customer_outside_boards }
+                  message: { type: string }
+        '422':
+          description: CPF novo sem `customer` (`customer_data_required`).
+    patch:
+      tags: [CardCustomer]
+      summary: Edita dado geral e/ou juridico do cliente do card.
+      description: >
+        Grava somente campos alterados e registra `card.customer_updated` com a
+        lista de campos. Dado geral nao aceita `null` (o servico de clientes nao
+        limpa dado geral); dado juridico aceita `null` para limpar. CPF nao e
+        editavel por esta rota.
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCardCustomer' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardCustomerPanel' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Card inexistente ou sem cliente vinculado (`card_customer_not_linked`).
+  /kanban/boards/{boardId}/cards/{cardId}/customer/lookup:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    post:
+      tags: [CardCustomer]
+      summary: Busca cliente por CPF no contexto do card.
+      description: >
+        Ordem: CPF -> ids (servico de clientes, so ids) -> visibilidade (banco do
+        Flow) -> dados (somente se visivel). `outside_boards` nao carrega nenhum
+        dado. Exige a mesma permissao de edicao do card.
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cpf]
+              additionalProperties: false
+              properties:
+                cpf: { type: string, description: CPF com ou sem mascara, validado por digitos verificadores }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [status]
+                    additionalProperties: false
+                    properties:
+                      status: { type: string, const: not_found }
+                  - type: object
+                    required: [status, customer]
+                    additionalProperties: false
+                    properties:
+                      status: { type: string, const: found }
+                      customer: { $ref: '#/components/schemas/CardCustomer' }
+                  - type: object
+                    required: [status]
+                    additionalProperties: false
+                    properties:
+                      status: { type: string, const: outside_boards }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    ValidationError:
+      description: Payload invalido (whitelist + class-validator; mensagem nunca ecoa o valor do CPF).
+    Forbidden:
+      description: Sem scope, sem membresia ativa, papel sem edicao ou coluna nao editavel.
+    NotFound:
+      description: Card inexistente, excluido ou de outro tenant.
+  schemas:
+    CardCustomerCore:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 200 }
+        email: { type: string, format: email, maxLength: 180 }
+        phone: { type: string, maxLength: 40 }
+        addressZip: { type: string, maxLength: 9 }
+        addressStreet: { type: string, maxLength: 60 }
+        addressNumber: { type: string, maxLength: 60 }
+        addressComplement: { type: string, maxLength: 60 }
+        addressNeighborhood: { type: string, maxLength: 60 }
+        addressCity: { type: string, maxLength: 60 }
+        addressState: { type: string, pattern: '^[A-Z]{2}$' }
+    CardCustomerJuridicoInput:
+      type: object
+      additionalProperties: false
+      properties:
+        dataNascimento: { type: [string, 'null'], format: date }
+        nacionalidade: { type: [string, 'null'], maxLength: 60 }
+        estadoCivil: { type: [string, 'null'], maxLength: 40 }
+        profissao: { type: [string, 'null'], maxLength: 120 }
+        rgNumero: { type: [string, 'null'], maxLength: 30 }
+        rgOrgaoEmissor: { type: [string, 'null'], maxLength: 120 }
+        rgUf: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        nomeMae: { type: [string, 'null'], maxLength: 200 }
+        numeroBeneficio: { type: [string, 'null'], maxLength: 30 }
+        especieBeneficio: { type: [string, 'null'], maxLength: 120 }
+        bancoPagamento: { type: [string, 'null'], maxLength: 120 }
+        hipossuficienciaDeclarada: { type: boolean }
+        observacoes: { type: [string, 'null'], maxLength: 4000 }
+    LinkCardCustomer:
+      type: object
+      required: [cpf]
+      additionalProperties: false
+      properties:
+        cpf: { type: string }
+        customer:
+          allOf:
+            - $ref: '#/components/schemas/CardCustomerCore'
+          required: [name]
+        juridico: { $ref: '#/components/schemas/CardCustomerJuridicoInput' }
+    UpdateCardCustomer:
+      type: object
+      additionalProperties: false
+      properties:
+        customer: { $ref: '#/components/schemas/CardCustomerCore' }
+        juridico: { $ref: '#/components/schemas/CardCustomerJuridicoInput' }
+    CardCustomerJuridico:
+      type: object
+      properties:
+        dataNascimento: { type: [string, 'null'], format: date }
+        nacionalidade: { type: [string, 'null'] }
+        estadoCivil: { type: [string, 'null'] }
+        profissao: { type: [string, 'null'] }
+        rgNumero: { type: [string, 'null'] }
+        rgOrgaoEmissor: { type: [string, 'null'] }
+        rgUf: { type: [string, 'null'] }
+        nomeMae: { type: [string, 'null'] }
+        numeroBeneficio: { type: [string, 'null'] }
+        especieBeneficio: { type: [string, 'null'] }
+        bancoPagamento: { type: [string, 'null'] }
+        hipossuficienciaDeclarada: { type: boolean }
+        observacoes: { type: [string, 'null'] }
+    CardCustomer:
+      type: object
+      description: Campos explicitos; sem campos fiscais de PDV (ie, indIeDest, addressIbgeCode).
+      required: [id, name, status, juridico]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        documentNumber: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        addressZip: { type: [string, 'null'] }
+        addressStreet: { type: [string, 'null'] }
+        addressNumber: { type: [string, 'null'] }
+        addressComplement: { type: [string, 'null'] }
+        addressNeighborhood: { type: [string, 'null'] }
+        addressCity: { type: [string, 'null'] }
+        addressState: { type: [string, 'null'] }
+        juridico:
+          oneOf:
+            - $ref: '#/components/schemas/CardCustomerJuridico'
+            - type: 'null'
+    CardCustomerPanel:
+      type: object
+      required: [customer, link, canEdit]
+      properties:
+        customer:
+          oneOf:
+            - $ref: '#/components/schemas/CardCustomer'
+            - type: 'null'
+        link:
+          oneOf:
+            - type: object
+              required: [createdByIdentityId, createdAt]
+              properties:
+                createdByIdentityId: { type: string, format: uuid }
+                createdAt: { type: string, format: date-time }
+            - type: 'null'
+        canEdit: { type: boolean }
+    CardCustomerLinkResult:
+      allOf:
+        - $ref: '#/components/schemas/CardCustomerPanel'
+        - type: object
+          required: [outcome]
+          properties:
+            outcome: { type: string, enum: [created, linked, unchanged] }

@@ -1,0 +1,127 @@
+schema_version: "1.0.0"
+execution_id: "20261028-flow-unification"
+date: "2026-10-28"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - Makefile
+  - docker/postgres/init/097_kanban_validation_tag_values.sql
+  - docker/postgres/init/098_kanban_validation_intake_card.sql
+  - docker/postgres/init/099_kanban_validation_routine_pickup.sql
+  - docker/postgres/init/100_kanban_card_action_analyses.sql
+  - docker/postgres/init/101_kanban_automation_expected_result.sql
+  - docker/postgres/init/102_kanban_prior_lawsuits_office_lawyers.sql
+  - docker/postgres/init/103_kanban_initial_petitions.sql
+  - docker/postgres/init/104_identity_flow_petition_approve.sql
+  - docker/postgres/init/105_kanban_move_rule_from_agent_rule.sql
+  - docker/postgres/init/014_identity_flow_dev_seed.sql
+  - docker/postgres/init/090_kanban_card_actions.sql
+  - docker/postgres/init/091_identity_flow_card_actions.sql
+  - docker/postgres/init/092_kanban_ai_completion_move.sql
+  - docs/ai-governance/attestations
+  - docs/ai-governance/evidence
+  - docs/api/flow-action-analysis-openapi.yaml
+  - docs/api/flow-ai-completion.md
+  - docs/api/flow-card-actions-openapi.yaml
+  - docs/api/flow-customer-documents-openapi.yaml
+  - docs/api/flow-initial-petitions-openapi.yaml
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  - docs/architecture/decisions/020-flow-initial-petitions-generator.md
+  - docs/product/flow-action-analysis-routine-prompt.md
+  - docs/product/flow-ai-completion-sprints.md
+  - docs/product/flow-branch-unification.md
+  - docs/product/flow-card-actions-sprints.md
+  - docs/product/flow-action-analysis-sprints.md
+  - docs/product/flow-initial-petitions-kickoff.md
+  - docs/product/flow-initial-petitions-original-prompt.md
+  - docs/product/flow-initial-petitions-routine-prompt.md
+  - docs/product/flow-initial-petitions-sprints.md
+  - docs/product/flow-office-kit-routine-prompt.md
+  - docs/product/flow-office-service-contract-sprints.md
+  - docs/runbooks/claudeconf.md
+  - docs/runbooks/flow-ai-completion.md
+  - docs/runbooks/flow-claude-connector.md
+  - docs/runbooks/flow-drive-sync.md
+  - docs/security/flow-customer-documents-checklist.md
+  - docs/security/flow-ai-completion-checklist.md
+  - docs/security/flow-card-actions-checklist.md
+  - docs/security/flow-hiscred-checklist.md
+  - docs/security/flow-initial-petitions-checklist.md
+  - tools/dev/claude-tunnel.sh
+  - tools/dev/flow-tunnel-apply.sh
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+  - implementations/svc-jboot-ai-gateway
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "219dda63ba14e610a001920573c4fa4a6ed9e2207d9712afff76cf10b77dad38"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "e706738ae1dbe13121fa4792a1827d989b93c5109bd667ed99bce60046978c67"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "ea47b50b20db4c8004b1bc4729a8df6fc3684f586f0013f8a536bcef4b70c5cc"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "512189fdcede69ca2bc0d051ec9e72caa0349a058102369ac6b789e2e663f6af"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-28 o usuario pediu para unificar nesta branch tudo do Flow, manter TUDO do worktree
+    flow-office-contract (gatilho customizavel ai_completed, acao move_card, acoes manuais por coluna,
+    HISCRED) e revisar a A1 e as sprints S1 a S5; autorizou o commit de checkpoint 1a0e7f220, a
+    migracao das regras e a troca do dev para este worktree.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-initial-petitions-checklist.md
+    - docs/security/flow-ai-completion-checklist.md
+    - docs/security/flow-card-actions-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - squash do snapshot 273c24c71 (flow-office-contract sem commit) sobre o checkpoint 1a0e7f220; 24 conflitos resolvidos
+  - migrations 100, 103 e 105 aplicadas no dev (105 idempotente; 090 a 092 ja estavam aplicadas)
+  - BFF no container - type-check, lint, build e 789 testes (787 passam, 2 ignorados ja existentes)
+  - Web no container - type-check, lint, 170 testes e next build
+  - AI Gateway no container - type-check, lint, build e 46 testes
+  - dev rodando Platform API, Platform Web e AI Gateway a partir do worktree; rotas novas com 401 sem token
+  - make ai-check e make ai-diff-check aprovados
+result: >-
+  Unificacao do Flow em feature/flow-office-kit: acoes manuais por coluna e conclusao explicita da IA com
+  gatilho ai_completed e acao move_card trazidas do flow-office-contract; A1 e S5 passam a gravar
+  ai.automation_completed na transacao do registro em vez de mover o card; S1 conclui pela confirmacao
+  explicita; "Ao concluir sem erro, mover o card para" e AutomationCardMoveService removidos; regra
+  existente convertida pela migration 105.

@@ -1,0 +1,55 @@
+schema_version: "1.0.0"
+execution_id: "20261015-anthropic-executor"
+date: "2026-10-15"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-6
+revision: "21bedcc22"
+target_project: implementations/svc-jboot-ai-gateway
+target_module: null
+scope_paths:
+  - implementations/svc-jboot-ai-gateway
+  - docker-compose.yml
+  - docs/runbooks/ai-gateway-anthropic.md
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+instruction_set_sha256: "1db3993ad587f13eeb6588f42b612bb180f8fe895c860946e8e91f34aeafe3f9"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "65e8b5f9db2790642a7f697668f946f2a058f8f9769a7cc29ef0a8ebec0a0fc6"
+agents:
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+skills:
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+human_approval:
+  status: approved
+  evidence: Usuario solicitou prosseguir com a implementacao do plano de correcao.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/ai-gateway-anthropic-checkpoint.md
+    - Execucao desabilitada por default; revisao nao aprova liberacao de dados reais.
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 21 testes gateway incluindo reservas concorrentes no PostgreSQL aprovados em container
+  - typecheck lint build e audit omit dev aprovados no container
+  - API Graph gate aprovado no worktree e no checkout integrado
+  - readiness e paginas de credenciais e agentes HTTP 200 no runtime local
+result: >-
+  Executor Messages API implementado com SDK Anthropic e Ajv, limites e ledger
+  idempotente sem conteudo integral. Integrado ao checkout local. Nao houve
+  inferencia paga nem validacao de sucesso externo. Politica de dados, KMS,
+  budgets monetarios, circuit breaker e smoke real permanecem pendentes.

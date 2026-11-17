@@ -1,0 +1,67 @@
+schema_version: "1.0.0"
+execution_id: "20261029-flow-realtime-card-updates"
+date: "2026-10-29"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docs/ai-governance/attestations
+  - docs/product/flow-realtime-card-updates-sprints.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "94f01ea4f96abdd1a7b6fbb90f926f7caa82c3a5936bd1ebd8826bc177b39269"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "60b5f27aff6b3e5ab70a25b2564026242f48df01fd50a3f349c026f28584ce60"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "ea7465b5faccfcd8b3714ef97cb1f82de49fa046d051bbb2b2f594611753367f"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "626e37c702d3e02202a985c7266e81e99bca76757957a40eb9879286ebf8cf04"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "611ab4dd52266ec98e750c441c6bf63468f7c1f2e2c1104c3cfbf0aeaaedcfd4"
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-29 o usuario relatou que o resultado da IA so aparecia apos recarregar a pagina, aprovou a
+    proposta de aviso em tempo real (board, modal do card e ficha do cliente recarregando sozinhos) e pediu
+    para implementar numa branch nova depois do merge e push da main.
+security_review:
+  status: passed
+  evidence:
+    - docs/product/flow-realtime-card-updates-sprints.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - BFF no container - type-check, lint, build e 840 testes (838 passam, 2 ignorados ja existentes), com PostgreSQL real para visibilidade do card.updated e repasse do customer.updated
+  - Web no container - type-check, lint (0 erro), 178 testes e next build
+  - make ai-check aprovado
+  - smoke no BFF em execucao - card.updated recebido 96 ms apos comentario gravado pelo HTTP
+result: >-
+  R1 de tempo real: atividades gravadas no card e o parecer da validacao do cliente viram avisos
+  card.updated e customer.updated pelo Socket.IO do Flow, so com ids e o tipo, respeitando a visibilidade
+  do card e da coluna; board, modal do card e ficha do cliente recarregam sozinhos. Conferencia visual com
+  rotina real pendente.

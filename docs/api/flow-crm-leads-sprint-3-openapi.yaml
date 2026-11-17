@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 3 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 3 de docs/product/flow-crm-leads-sprints.md
+    (decisoes do usuario de 2026-10-11): override do admin do tenant
+    (`flow:admin`) para vincular cliente existente fora dos quadros, e
+    sinalizacao `checklistPending` com a importacao de dominio deixando de
+    passar pelo bloqueio de checklist. Estende flow-crm-leads-sprint-1-openapi.yaml
+    e flow-crm-leads-sprint-2-openapi.yaml; so redefine o que muda (campos
+    aditivos, erros novos e um 422 removido). Nenhuma rota nova.
+  x-implementation-status: >
+    Implementado em 2026-10-11 em
+    implementations/bff-jboot-platform/src/modules/kanban/customers/ (override),
+    documents/checklist-pending.ts, cards/cards.service.ts e
+    documents/card-documents.service.ts (sinalizacao).
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: CardCustomer
+  - name: ChecklistPending
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  admin_scope: >
+    `flow:admin` lido de `KanbanRequestContext.scopes` (claim `scopes` array ou
+    `scope` separado por espaco do JWT Identity). O override exige tambem as
+    checagens normais de edicao do card (`flow:write`, `board_admin`/`board_member`
+    ativo no quadro, coluna editavel pelo MemberProfile).
+  personal_data: >
+    CPF so no corpo. `system_event`/auditoria do override levam `customerId`,
+    `previousCustomerId`, `created`, `override: true` e `reason`; o motivo e o
+    unico texto livre e nunca e logado.
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/customer/lookup:
+    post:
+      tags: [CardCustomer]
+      summary: Busca por CPF (inalterada exceto pelo `canOverride` do admin).
+      description: >
+        `outside_boards` continua sem nenhum dado do cliente, inclusive para o
+        admin. Para `flow:admin` a resposta traz `canOverride: true`; para os
+        demais continua sendo apenas `{ status: outside_boards }`.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [status]
+                    additionalProperties: false
+                    properties:
+                      status: { type: string, const: outside_boards }
+                      canOverride: { type: boolean, const: true, description: 'so presente para flow:admin' }
+  /kanban/boards/{boardId}/cards/{cardId}/customer:
+    put:
+      tags: [CardCustomer]
+      summary: Vincula ou troca o cliente; aceita `override` do admin do tenant.
+      description: >
+        Sem `override`: comportamento da Sprint 1 (409 `customer_outside_boards`).
+        Com `override` (somente `flow:admin`): o scope e checado logo depois das
+        checagens de edicao do card e ANTES de resolver o CPF. Resolucao:
+        `outside_boards` -> vincula o PRIMEIRO id por ordem de criacao
+        (`created_at, id`, mesma regra de duplicidade legada da Sprint 1; nao ha
+        escolha de id); `not_found` -> 422 `override_requires_existing_customer`
+        (nunca cria, mesmo com `customer` no corpo); cliente visivel -> override
+        ignorado, vinculo normal sem marca de override no evento. `customer`/
+        `juridico` sao ignorados no vinculo por override. Evento
+        `card.customer_linked` ou `card.customer_changed` com `override: true` e
+        `reason`; auditoria `kanban_card_customer_linked|changed` com o mesmo
+        payload. Depois do vinculo o admin (membro do quadro do card) passa a ver
+        o cliente pela regra normal de visibilidade.
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkCardCustomer' }
+      responses:
+        '200':
+          description: '`outcome: linked` no vinculo por override.'
+        '400':
+          description: >
+            Validacao: `override` sem `reason`, `reason` com menos de 10 ou mais
+            de 500 caracteres depois do trim, `override` nao-objeto ou com campo
+            fora da whitelist. A mensagem nunca ecoa o motivo.
+        '403':
+          description: '`override_not_allowed` (override sem `flow:admin`) ou papel/coluna sem edicao.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code, message]
+                properties:
+                  code: { type: string, const: override_not_allowed }
+                  message: { type: string }
+        '409':
+          description: '`customer_outside_boards` quando nao ha `override` (inalterado).'
+        '422':
+          description: >
+            `customer_data_required` (CPF novo sem `customer`, inalterado) ou
+            `override_requires_existing_customer` (override com CPF sem cliente).
+  /kanban/boards/{boardId}/cards/{cardId}/documents:
+    get:
+      tags: [ChecklistPending]
+      summary: Checklist do card com `checklistPending` (campo aditivo).
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, completeness, checklistPending, canUpload, canReview]
+                properties:
+                  checklistPending:
+                    type: boolean
+                    description: >
+                      true quando o card esta em coluna ATIVA com
+                      `requiresCompleteChecklist` e ha obrigatorio ativo cujo envio
+                      mais recente nao esta `aceito`. Mesma regra do tile.
+x-changed-routes:
+  description: Campos aditivos e mudanca de erro em rotas existentes.
+  'GET /kanban/boards/{boardId}/cards':
+    data[].checklistPending: >
+      boolean; calculado por quadro com `completenessForBoard` (uma consulta) +
+      `ColumnsRepository.list` (uma consulta, colunas ativas); sem N+1.
+  'POST /domain-integrations/... (criacao de card de origem na coluna padrao)':
+    '422': >
+      REMOVIDO. A importacao de dominio entra na coluna padrao mesmo com
+      `requiresCompleteChecklist` e o card fica com `checklistPending: true`
+      enquanto o checklist estiver incompleto.
+  'POST /kanban/boards/{boardId}/cards':
+    '422': 'ChecklistIncomplete (inalterado: criacao manual continua bloqueada)'
+  'POST /kanban/boards/{boardId}/cards/{cardId}/move':
+    '422': 'ChecklistIncomplete (inalterado: mover continua bloqueado)'
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    LinkCardCustomer:
+      description: 'Schema da Sprint 1 com o campo opcional `override`.'
+      type: object
+      required: [cpf]
+      additionalProperties: false
+      properties:
+        cpf: { type: string }
+        customer: { description: 'ver flow-crm-leads-sprint-1-openapi.yaml; ignorado no override' }
+        juridico: { description: 'ver flow-crm-leads-sprint-1-openapi.yaml; ignorado no override' }
+        override:
+          type: object
+          required: [reason]
+          additionalProperties: false
+          properties:
+            reason: { type: string, minLength: 10, maxLength: 500, description: 'aparado antes da validacao' }

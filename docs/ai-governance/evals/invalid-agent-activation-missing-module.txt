@@ -1,0 +1,10 @@
+Agent Activation:
+  project: invalid-example
+  using_agent:
+    - docs/agents/orchestration/product-engineer.md: exemplo invalido
+  using_skill:
+    - .codex.d/skills/jboot-orchestration/SKILL.md: exemplo invalido
+  referenced_only:
+    - docs/product/pdv-sprint-1-gate.md
+  not_using:
+    - implementations/app-jboot-pdv-mobile/*

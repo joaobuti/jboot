@@ -1,0 +1,219 @@
+name: jboot-observability
+
+services:
+  observability-postgres:
+    image: postgres:18.4-alpine3.24
+    environment:
+      POSTGRES_DB: jboot_observability
+      POSTGRES_USER: ${OBS_POSTGRES_USER:?define OBS_POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${OBS_POSTGRES_PASSWORD:?define OBS_POSTGRES_PASSWORD in .env}
+    volumes:
+      - observability-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  observability-minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBS_MINIO_ROOT_USER:?define OBS_MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${OBS_MINIO_ROOT_PASSWORD:?define OBS_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - observability-minio-data:/data
+    ports:
+      - "127.0.0.1:${OBS_MINIO_PORT:-9100}:9000"
+      - "127.0.0.1:${OBS_MINIO_CONSOLE_PORT:-9101}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      observability-minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${OBS_MINIO_ROOT_USER:?define OBS_MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${OBS_MINIO_ROOT_PASSWORD:?define OBS_MINIO_ROOT_PASSWORD in .env}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set observability http://observability-minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing observability/jboot-observability-mimir-blocks
+        mc mb --ignore-existing observability/jboot-observability-mimir-ruler
+        mc mb --ignore-existing observability/jboot-observability-mimir-alertmanager
+        mc mb --ignore-existing observability/jboot-observability-tempo-traces
+        mc mb --ignore-existing observability/jboot-observability-loki-chunks
+    restart: "no"
+
+  mimir:
+    image: grafana/mimir:3.0.6
+    command:
+      - -config.file=/etc/mimir/mimir.yaml
+      - -config.expand-env=true
+    environment:
+      OBS_MINIO_ROOT_USER: ${OBS_MINIO_ROOT_USER:?define OBS_MINIO_ROOT_USER in .env}
+      OBS_MINIO_ROOT_PASSWORD: ${OBS_MINIO_ROOT_PASSWORD:?define OBS_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - ./config/mimir/mimir.yaml:/etc/mimir/mimir.yaml:ro
+      - ./config/mimir/alertmanager-fallback.yaml:/etc/mimir/alertmanager-fallback.yaml:ro
+      - observability-mimir-data:/data
+    ports:
+      - "127.0.0.1:${OBS_MIMIR_PORT:-9009}:9009"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  tempo:
+    image: grafana/tempo:2.10.5
+    command:
+      - -config.file=/etc/tempo/tempo.yaml
+      - -config.expand-env=true
+    environment:
+      OBS_MINIO_ROOT_USER: ${OBS_MINIO_ROOT_USER:?define OBS_MINIO_ROOT_USER in .env}
+      OBS_MINIO_ROOT_PASSWORD: ${OBS_MINIO_ROOT_PASSWORD:?define OBS_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - ./config/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - observability-tempo-data:/var/tempo
+    ports:
+      - "127.0.0.1:${OBS_TEMPO_PORT:-3200}:3200"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  loki:
+    image: grafana/loki:3.7.2
+    command:
+      - -config.file=/etc/loki/loki.yaml
+      - -config.expand-env=true
+    environment:
+      OBS_MINIO_ROOT_USER: ${OBS_MINIO_ROOT_USER:?define OBS_MINIO_ROOT_USER in .env}
+      OBS_MINIO_ROOT_PASSWORD: ${OBS_MINIO_ROOT_PASSWORD:?define OBS_MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - ./config/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - observability-loki-data:/loki
+    ports:
+      - "127.0.0.1:${OBS_LOKI_PORT:-3100}:3100"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  otel-gateway:
+    image: otel/opentelemetry-collector-contrib:0.157.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      OBS_ENVIRONMENT: ${OBS_ENVIRONMENT:-local}
+      OBS_TENANT_ID: ${OBS_TENANT_ID:-jboot-local}
+    volumes:
+      - ./config/otel/otel-gateway.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:${OBS_OTLP_GRPC_PORT:-14317}:4317"
+      - "127.0.0.1:${OBS_OTLP_HTTP_PORT:-14318}:4318"
+      - "${OBS_DOCKER_GATEWAY_ADDRESS:-172.17.0.1}:${OBS_OTLP_GRPC_PORT:-14317}:4317"
+      - "${OBS_DOCKER_GATEWAY_ADDRESS:-172.17.0.1}:${OBS_OTLP_HTTP_PORT:-14318}:4318"
+      - "127.0.0.1:${OBS_OTEL_HEALTH_PORT:-13133}:13133"
+    depends_on:
+      - mimir
+      - tempo
+      - loki
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: observability-postgres:5432
+      GF_DATABASE_NAME: jboot_observability
+      GF_DATABASE_USER: ${OBS_POSTGRES_USER:?define OBS_POSTGRES_USER in .env}
+      GF_DATABASE_PASSWORD: ${OBS_POSTGRES_PASSWORD:?define OBS_POSTGRES_PASSWORD in .env}
+      GF_SECURITY_ADMIN_USER: ${OBS_GRAFANA_ADMIN_USER:?define OBS_GRAFANA_ADMIN_USER in .env}
+      GF_SECURITY_ADMIN_PASSWORD: ${OBS_GRAFANA_ADMIN_PASSWORD:?define OBS_GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
+      OBS_TENANT_ID: ${OBS_TENANT_ID:-jboot-local}
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - observability-grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${OBS_GRAFANA_PORT:-3300}:3000"
+    depends_on:
+      observability-postgres:
+        condition: service_healthy
+      mimir:
+        condition: service_started
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    restart: unless-stopped
+
+  telemetrygen-traces:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.157.0
+    profiles: ["smoke"]
+    command:
+      - traces
+      - --otlp-endpoint=otel-gateway:4317
+      - --otlp-insecure
+      - --duration=5s
+      - --rate=10
+      - --service=${OBS_SMOKE_SERVICE_NAME:-jboot-observability-smoke}
+    depends_on:
+      - otel-gateway
+    restart: "no"
+
+  telemetrygen-metrics:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.157.0
+    profiles: ["smoke"]
+    command:
+      - metrics
+      - --otlp-endpoint=otel-gateway:4317
+      - --otlp-insecure
+      - --duration=5s
+      - --rate=10
+      - --service=${OBS_SMOKE_SERVICE_NAME:-jboot-observability-smoke}
+    depends_on:
+      - otel-gateway
+    restart: "no"
+
+  telemetrygen-logs:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.157.0
+    profiles: ["smoke"]
+    command:
+      - logs
+      - --otlp-endpoint=otel-gateway:4317
+      - --otlp-insecure
+      - --duration=5s
+      - --rate=10
+      - --service=${OBS_SMOKE_SERVICE_NAME:-jboot-observability-smoke}
+    depends_on:
+      - otel-gateway
+    restart: "no"
+
+volumes:
+  observability-postgres-data:
+  observability-minio-data:
+  observability-mimir-data:
+  observability-tempo-data:
+  observability-loki-data:
+  observability-grafana-data:

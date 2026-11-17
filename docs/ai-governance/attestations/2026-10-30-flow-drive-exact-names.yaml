@@ -1,0 +1,55 @@
+schema_version: "1.0.0"
+execution_id: "20261030-flow-drive-exact-names"
+date: "2026-10-30"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docs/ai-governance/attestations
+  - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  - docs/runbooks/flow-drive-sync.md
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+instruction_set_sha256: "ee660fd7de6b668914adb99a44e57819d2bf4149246e9310e8bc1857165ea9a3"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "85ed0934a1457370f480cd4ee39200336f47527e2bb2ff9f94ca6fea36ee4abb"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "6e3a7cb031e3bc19f1866f3527d64d0297333d159ef564d85b2e4922e5da35da"
+agents:
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-30 o usuario viu pastas "Manaus" duplicadas no Drive apos o reteste e definiu as regras:
+    pasta do escritorio e do cliente reaproveitadas pelo nome exato (senao criadas) e arquivo com nome igual
+    substituido pela versao nova (senao criado).
+security_review:
+  status: passed
+  evidence:
+    - docs/runbooks/flow-drive-sync.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - BFF no container - type-check, lint, build e 843 testes (841 passam, 2 ignorados ja existentes)
+  - teste com conexoes PostgreSQL separadas - envios do mesmo cliente serializados, clientes diferentes em paralelo
+  - make ai-check aprovado
+result: >-
+  Drive por nome exato: pasta do escritorio e do cliente reaproveitadas pelo nome (a mais antiga se ja houver
+  duplicada), arquivo de nome igual substituido, senao criado; envios do mesmo cliente serializados por trava
+  consultiva, o que elimina as pastas duplicadas por envios paralelos.

@@ -1,0 +1,85 @@
+schema_version: "1.0.0"
+execution_id: "20261015-chatgpt-plan-kanban-planning"
+date: "2026-10-15"
+mode: planning
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-ai-gateway
+target_module: modules/kanban
+scope_paths:
+  - docs/ai-governance/attestations/2026-10-15-zz-chatgpt-plan-kanban-planning.yaml
+  - docs/product/chatgpt-plan-usage-application-draft.md
+  - docs/product/chatgpt-plan-usage-sprints.md
+  - docs/product/kanban-ai-providers-replan.md
+  - docs/product/kanban-sprint-10-12-gate.md
+  - docs/product/kanban-sprints.md
+  - docs/data/kanban-sprint-10-12-data-model.md
+  - implementations/app-jboot-next-platform/AI_CONTEXT.md
+  - implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md
+  - implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+  - implementations/bff-jboot-platform/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+  - implementations/svc-jboot-ai-gateway/AI_CONTEXT.md
+  - implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+instruction_sources:
+  - AGENTS.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-plan-feature.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+instruction_set_sha256: "473a2a3f677f05ad48cf2168bbf668934f546a43c01caac23a2022794621d4b3"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "24f58b5be07bda583415d2759730795b0ae57bee51cbaa5e04e3580288a0aeb6"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "a1dd75f9842f6833f3cb9b5d8f09b30efb912442f29f00c8f3218e74b85dffe5"
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "12283f2a98cadd4c921b6a7f96a1d5a829a19afd4999a1cab802cbfd869cdc9d"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "43f56d2455711a3cff3db7c5b35529c57a5a8265ecab648e2a57e72997618117"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "be60d707ba9cc2ebf4521b1ff935ad51d232cfb5ebc76869463e31954026e5d3"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Usuario confirmou em 2026-10-15 que ChatGPT Plus e obrigatorio, API key e
+    opcional, agentes pertencem ao JBoot, gatilhos partem do Kanban e os efeitos
+    variam por agente; autorizou continuar a implementacao OpenAI.
+security_review:
+  status: not_applicable
+  evidence:
+    - execucao restrita a planejamento, contratos, contextos derivados e rascunho nao enviado
+    - nenhum endpoint, dependencia, banco, segredo, token ou runtime foi alterado
+    - security-checklist permanece gate obrigatorio antes da implementacao funcional e merge
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-context regenerou cinco contextos afetados
+  - make ai-check aprovou 39 cenarios comportamentais e 56 testes do harness
+  - API Contract Graph permaneceu sem erros
+  - git diff --check aprovado
+result: >-
+  Planejamento OpenAI/Kanban corrigido para ChatGPT Plan primario, API key
+  opcional sem fallback, agentes JBoot com tool manifests versionados e dispatch
+  duravel. Operador designa a conexao de desenvolvimento e cada tenant designa
+  a sua em producao. OAuth/plan usage continua bloqueado por aprovacao comercial;
+  handlers continuam bloqueados pelo registry e contratos de dados. Anthropic
+  nao foi alterado.

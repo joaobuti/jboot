@@ -1,0 +1,707 @@
+openapi: 3.1.0
+info:
+  title: JBoot Kanban (Flow) Sprint 1 API
+  version: 0.1.0
+  summary: Contrato inicial para board, coluna e card do Kanban (produto "Flow"), incluindo extensao de WebSocket para realtime.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: Boards
+  - name: BoardColumns
+  - name: Cards
+  - name: BoardMembers
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  required_claims:
+    - sub
+    - client_id
+    - application_id
+    - database_ref
+x-websocket:
+  description: >
+    Realtime do Kanban nao e coberto nativamente pelo OpenAPI; documentado aqui como extensao.
+    WebSocket Gateway nativo do NestJS (@nestjs/websockets), adapter padrao do ecossistema (socket.io ou ws),
+    executando dentro do processo platform-api. Sem Redis/pub-sub multi-instancia no MVP (limitacao conhecida
+    para escala horizontal futura).
+  namespace: /flow/ws
+  auth: JWT no handshake (mesmo token Bearer usado nas rotas REST).
+  rooms:
+    - name: "board:{boardId}"
+      join_rule: cliente entra na room somente apos o gateway validar BoardMember ativo para client_id/board_id do JWT.
+  events:
+    client_to_server:
+      - name: board.join
+        payload:
+          boardId: string (uuid)
+      - name: board.leave
+        payload:
+          boardId: string (uuid)
+      - name: card.move
+        payload:
+          boardId: string (uuid)
+          cardId: string (uuid)
+          toBoardColumnId: string (uuid)
+          toPosition: integer
+    server_to_client:
+      - name: card.moved
+        payload:
+          boardId: string (uuid)
+          cardId: string (uuid)
+          fromBoardColumnId: string (uuid)
+          toBoardColumnId: string (uuid)
+          toPosition: integer
+          movedByIdentityId: string (uuid)
+          occurredAt: string (date-time)
+      - name: error
+        payload:
+          code: string
+          message: string
+paths:
+  /kanban/boards:
+    get:
+      tags: [Boards]
+      summary: List boards for the current client.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Status'
+      responses:
+        '200':
+          description: Boards page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardPage'
+    post:
+      tags: [Boards]
+      summary: Create board for the current client.
+      security:
+        - bearerAuth: [flow:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBoardRequest'
+      responses:
+        '201':
+          description: Created board.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+  /kanban/boards/{boardId}:
+    get:
+      tags: [Boards]
+      summary: Get board details.
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Board details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+    patch:
+      tags: [Boards]
+      summary: Update board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBoardRequest'
+      responses:
+        '200':
+          description: Updated board.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+    delete:
+      tags: [Boards]
+      summary: Archive board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '204':
+          description: Board archived.
+  /kanban/boards/{boardId}/columns:
+    get:
+      tags: [BoardColumns]
+      summary: List columns of a board.
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Columns page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardColumnPage'
+    post:
+      tags: [BoardColumns]
+      summary: Create column in a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBoardColumnRequest'
+      responses:
+        '201':
+          description: Created column.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardColumn'
+  /kanban/boards/{boardId}/columns/{columnId}:
+    patch:
+      tags: [BoardColumns]
+      summary: Update column (name, position, color, wip_limit).
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ColumnId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBoardColumnRequest'
+      responses:
+        '200':
+          description: Updated column.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardColumn'
+    delete:
+      tags: [BoardColumns]
+      summary: Archive column.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/ColumnId'
+      responses:
+        '204':
+          description: Column archived.
+  /kanban/boards/{boardId}/cards:
+    get:
+      tags: [Cards]
+      summary: List cards of a board.
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: boardColumnId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cards page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardPage'
+    post:
+      tags: [Cards]
+      summary: Create card in a column.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '201':
+          description: Created card.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+  /kanban/boards/{boardId}/cards/{cardId}:
+    patch:
+      tags: [Cards]
+      summary: Update card (title, description).
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCardRequest'
+      responses:
+        '200':
+          description: Updated card.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+    delete:
+      tags: [Cards]
+      summary: Archive card.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      responses:
+        '204':
+          description: Card archived.
+  /kanban/boards/{boardId}/cards/{cardId}/move:
+    post:
+      tags: [Cards]
+      summary: Move card to another column/position. Triggers WebSocket event card.moved.
+      security:
+        - bearerAuth: [flow:write]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/CardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveCardRequest'
+      responses:
+        '200':
+          description: Card moved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '409':
+          description: Move rejected (e.g. wip_limit exceeded).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /kanban/boards/{boardId}/members:
+    get:
+      tags: [BoardMembers]
+      summary: List members of a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      responses:
+        '200':
+          description: Board members page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardMemberPage'
+    post:
+      tags: [BoardMembers]
+      summary: Add member to a board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBoardMemberRequest'
+      responses:
+        '201':
+          description: Created board member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardMember'
+  /kanban/boards/{boardId}/members/{memberId}:
+    patch:
+      tags: [BoardMembers]
+      summary: Update member role/status.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/MemberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBoardMemberRequest'
+      responses:
+        '200':
+          description: Updated board member.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardMember'
+    delete:
+      tags: [BoardMembers]
+      summary: Remove member from board.
+      security:
+        - bearerAuth: [flow:admin]
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+        - $ref: '#/components/parameters/MemberId'
+      responses:
+        '204':
+          description: Member removed.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+        maxLength: 160
+    Status:
+      name: status
+      in: query
+      schema:
+        $ref: '#/components/schemas/Status'
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ColumnId:
+      name: columnId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CardId:
+      name: cardId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Status:
+      type: string
+      enum: [active, archived]
+    PageMeta:
+      type: object
+      required: [limit, offset, total]
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+    Board:
+      type: object
+      required: [id, name, status, createdAt, updatedAt, currentUserRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        status:
+          $ref: '#/components/schemas/Status'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        currentUserRole:
+          description: Papel do identity autenticado neste board especifico (null se nao for membro ativo).
+          type: [string, 'null']
+          enum: [board_admin, board_member, null]
+        defaultColumnId:
+          description: Coluna padrao do board quando retornada por criacao/contrato de integracao.
+          type: [string, 'null']
+          format: uuid
+    CreateBoardRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        description:
+          type: [string, 'null']
+    UpdateBoardRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        description:
+          type: [string, 'null']
+        status:
+          $ref: '#/components/schemas/Status'
+    BoardPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Board'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    BoardColumn:
+      type: object
+      required: [id, boardId, name, position, isDefault, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        position:
+          type: integer
+        color:
+          type: [string, 'null']
+        wipLimit:
+          type: [integer, 'null']
+        isDefault:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/Status'
+    CreateBoardColumnRequest:
+      type: object
+      required: [name, position]
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        position:
+          type: integer
+        color:
+          type: [string, 'null']
+          maxLength: 24
+        wipLimit:
+          type: [integer, 'null']
+          minimum: 1
+    UpdateBoardColumnRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        position:
+          type: integer
+        color:
+          type: [string, 'null']
+          maxLength: 24
+        wipLimit:
+          type: [integer, 'null']
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/Status'
+    BoardColumnPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardColumn'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    Card:
+      type: object
+      required: [id, boardId, boardColumnId, title, position, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        boardColumnId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: [string, 'null']
+        sourceModule:
+          type: [string, 'null']
+        sourceType:
+          type: [string, 'null']
+        sourceId:
+          type: [string, 'null']
+        sourcePayload:
+          type: [object, 'null']
+        sourceUrl:
+          type: [string, 'null']
+        position:
+          type: integer
+        status:
+          $ref: '#/components/schemas/Status'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateCardRequest:
+      type: object
+      required: [boardColumnId, title]
+      properties:
+        boardColumnId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: [string, 'null']
+    UpdateCardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: [string, 'null']
+        status:
+          $ref: '#/components/schemas/Status'
+    MoveCardRequest:
+      type: object
+      required: [toBoardColumnId, toPosition]
+      properties:
+        toBoardColumnId:
+          type: string
+          format: uuid
+        toPosition:
+          type: integer
+          minimum: 0
+    CardPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    BoardMember:
+      type: object
+      required: [id, boardId, identityId, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        boardId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [board_admin, board_member]
+        status:
+          type: string
+          enum: [active, inactive]
+    CreateBoardMemberRequest:
+      type: object
+      required: [identityId, role]
+      properties:
+        identityId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [board_admin, board_member]
+    UpdateBoardMemberRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [board_admin, board_member]
+        status:
+          type: string
+          enum: [active, inactive]
+    BoardMemberPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardMember'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

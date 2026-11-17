@@ -1,0 +1,295 @@
+openapi: 3.1.0
+info:
+  title: JBoot Platform Juridico Data API
+  version: 0.1.0
+  summary: Authenticated facade for official judicial data queries.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: JuridicoData
+x-jboot-context:
+  application_slug: juridico
+  required_scope: juridico:read
+  tenant_source: jwt.client_id
+  database_ref_source: jwt.database_ref
+  client_id_in_payload: forbidden
+  database_ref_in_payload: forbidden
+paths:
+  /juridico/datajud/tribunais:
+    get:
+      tags: [JuridicoData]
+      summary: List tribunals accepted by the DataJud integration.
+      responses:
+        '200':
+          description: Tribunal options for the current UI.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tribunal'
+                  total:
+                    type: integer
+                    minimum: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /juridico/datajud/processos/consulta:
+    post:
+      tags: [JuridicoData]
+      summary: Query one process through the internal DataJud service.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessQueryRequest'
+      responses:
+        '200':
+          description: Normalized process and freshness metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessQueryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Missing scope or process restricted by secrecy.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/Timeout'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Tribunal:
+      type: object
+      additionalProperties: false
+      required: [sigla, nome]
+      properties:
+        sigla:
+          type: string
+        nome:
+          type: string
+    ProcessQueryRequest:
+      type: object
+      additionalProperties: false
+      required: [numeroProcesso]
+      properties:
+        numeroProcesso:
+          type: string
+          minLength: 20
+          maxLength: 25
+        tribunal:
+          type: [string, 'null']
+          pattern: '^[A-Z0-9-]{2,16}$'
+    ProcessQueryResponse:
+      type: object
+      additionalProperties: false
+      required: [requestId, source, capturedAt, lagNotice, process]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        source:
+          type: string
+          const: datajud
+        capturedAt:
+          type: string
+          format: date-time
+        lagNotice:
+          type: string
+          description: Mandatory notice that DataJud may lag the source tribunal.
+        process:
+          $ref: '#/components/schemas/Process'
+    Process:
+      type: object
+      additionalProperties: false
+      required:
+        - numeroProcesso
+        - tribunal
+        - nivelSigilo
+        - assuntos
+        - partes
+        - movimentacoes
+      properties:
+        numeroProcesso:
+          type: string
+        tribunal:
+          type: string
+        grau:
+          type: [string, 'null']
+        dataAjuizamento:
+          type: [string, 'null']
+          format: date-time
+        dataUltimaAtualizacao:
+          type: [string, 'null']
+          format: date-time
+        nivelSigilo:
+          type: integer
+          const: 0
+        classe:
+          anyOf:
+            - $ref: '#/components/schemas/CodeName'
+            - type: 'null'
+        orgaoJulgador:
+          anyOf:
+            - $ref: '#/components/schemas/CodeName'
+            - type: 'null'
+        assuntos:
+          type: array
+          items:
+            $ref: '#/components/schemas/CodeName'
+        partes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Party'
+        movimentacoes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movement'
+    CodeName:
+      type: object
+      additionalProperties: false
+      required: [codigo, nome]
+      properties:
+        codigo:
+          type: [string, integer, 'null']
+        nome:
+          type: string
+    Party:
+      type: object
+      additionalProperties: false
+      required: [nome, tipo, polo]
+      properties:
+        nome:
+          type: string
+        tipo:
+          type: string
+        polo:
+          type: [string, 'null']
+    Movement:
+      type: object
+      additionalProperties: false
+      required: [codigo, nome, dataHora, complementos]
+      properties:
+        codigo:
+          type: [integer, 'null']
+        nome:
+          type: string
+        dataHora:
+          type: [string, 'null']
+          format: date-time
+        complementos:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/MovementComplement'
+    MovementComplement:
+      type: object
+      additionalProperties: false
+      properties:
+        codigo:
+          type: [integer, string, 'null']
+        nome:
+          type: [string, 'null']
+          maxLength: 500
+        valor:
+          type: [string, 'null']
+          maxLength: 2000
+        descricao:
+          type: [string, 'null']
+          maxLength: 2000
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, requestId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+          enum:
+            - unauthorized
+            - forbidden
+            - process_restricted
+            - process_not_found
+            - validation_error
+            - rate_limited
+            - juridico_data_unavailable
+            - juridico_data_timeout
+        requestId:
+          type: string
+          format: uuid
+  responses:
+    Unauthorized:
+      description: Authentication required.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Juridico scope missing.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Process not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: Invalid request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: DataJud rate limit reached.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ServiceUnavailable:
+      description: Internal service or DataJud unavailable.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Timeout:
+      description: Internal service or DataJud timed out.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

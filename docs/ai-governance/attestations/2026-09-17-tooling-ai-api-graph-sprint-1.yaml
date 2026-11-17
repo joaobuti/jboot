@@ -1,0 +1,63 @@
+schema_version: "1.0.0"
+execution_id: "20260917-tooling-ai-api-graph-sprint-1"
+date: "2026-09-17"
+mode: governance
+status: success
+runtime: claude-code-vscode
+model: claude-opus-5
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+scope_paths:
+  - Makefile
+  - tools/ai/api-graph.py
+  - tools/ai/api-graph.yaml
+  - tools/ai/tests/test_api_graph.py
+  - docs/product/api-graph-sprints.md
+  - docs/ai-governance/README.md
+  - docs/ai-governance/records/decisions/README.md
+  - docs/ai-governance/records/decisions/2026-09-17-api-contract-graph.md
+  - docs/ai-governance/attestations/2026-09-17-tooling-ai-api-graph-sprint-1.yaml
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-governance/attestations/README.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+instruction_set_sha256: "890cdecb28af55f78ac23f80819228287e8b135410740d530c47b119e22664e4"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    usuario aprovou o PE Decision e o Stack Fit Gate (grafo proprio restrito a fronteira HTTP,
+    Python em tools/ai, CLI com artefato JSON, deteccao antes de eliminacao, Sprint 1 somente
+    relatorio e cobertura de todos os servicos) e autorizou o inicio sem decisoes pendentes
+security_review:
+  status: passed
+  evidence:
+    - extrator somente le arquivos de codigo das raizes declaradas em tools/ai/api-graph.yaml e config/*.php do servico Laravel
+    - nao le arquivos .env, nao resolve valores de variaveis de ambiente e nao faz chamadas de rede
+    - artefato gravado em tmp/ai (ignorado pelo git) contem apenas caminhos, rotas, metodos e nomes de env var
+    - sem dependencia nova e sem tool MCP; capacidade T1 na tool-approval-matrix
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - python3 -m unittest tools/ai/tests/test_api_graph.py
+  - make ai-api-graph
+  - make ai-conformance
+result: >-
+  Grafo de contratos HTTP entregue como controle de governanca: extrai rotas de NestJS, Laravel,
+  FastAPI e route handlers Next.js, e chamadas de consumidores TypeScript, Python e PHP, ligando
+  as duas pontas por env var. Primeira execucao: 285 rotas, 283 chamadas, 247 resolvidas,
+  0 nao resolvidas, 0 drift entre BFFs e front e 16 chamadas orfas em thunks mortos do template
+  Velzon nos dois apps Next. Sprint 1 permanece em andamento ate a revisao humana do relatorio.

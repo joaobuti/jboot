@@ -1,0 +1,9 @@
+Agent Activation:
+  project: invalid-example
+  module: invalid-example
+  using_agent:
+    - docs/agents/orchestration/product-engineer.md: exemplo invalido
+  referenced_only:
+    - docs/product/pdv-sprint-1-gate.md
+  not_using:
+    - implementations/app-jboot-pdv-mobile/*

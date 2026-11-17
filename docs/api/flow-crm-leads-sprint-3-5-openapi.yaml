@@ -1,0 +1,403 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 3.5 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 3.5 de docs/product/flow-crm-leads-sprints.md
+    (escritorios e visibilidade por escritorio; ADR 014, Decisoes 6 e 7).
+    Estende flow-crm-leads-sprint-1/2/3-openapi.yaml e kanban-sprint-*-openapi.yaml:
+    rotas novas de escritorio, campo aditivo `officeId` em card, criacao de card
+    com `officeId`, candidatos a responsavel e erros novos. Com a chave do tenant
+    desligada (`officeVisibilityEnabled = false`) nenhuma rota existente muda.
+  x-implementation-status: >
+    Implementado em 2026-10-12 em
+    implementations/bff-jboot-platform/src/modules/kanban/offices/ e shared/
+    (CardVisibilityService, FlowAdminDirectory, KanbanViewerResolver).
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: Offices
+  - name: CardVisibility
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  admin_scope: >
+    `flow:admin` do JWT. Rotas de administracao exigem o scope no controller e o
+    servico confere de novo (403 `office_admin_required`). Com a chave ligada,
+    `flow:admin` e `board_admin` efetivo em todo quadro do tenant, sem membresia.
+  card_visibility: >
+    Card visivel = (chave ligada e `flow:admin`) ou (membro ativo do quadro e,
+    com a chave ligada, escritorio do card entre os do usuario). Toda rota com
+    `{cardId}` responde 404 `Card not found` para card invisivel (igual a
+    inexistente); listas, completude, metricas e busca por CPF so contam cards
+    visiveis; realtime, notificacao in-app e e-mail so chegam a quem ve o card.
+  personal_data: >
+    Eventos e auditoria so com ids, nome do escritorio e o motivo digitado pelo
+    admin. `office-users` devolve nome e e-mail do usuario do Flow somente ao admin.
+paths:
+  /kanban/offices/context:
+    get:
+      tags: [Offices]
+      summary: Contexto de escritorio do usuario (todo usuario do Flow)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfficeContext' }
+  /kanban/offices:
+    get:
+      tags: [Offices]
+      summary: Lista escritorios do tenant com contagens (flow:admin)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/OfficeListItem' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Offices]
+      summary: Cria escritorio (flow:admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOffice' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Office' }
+        '409': { description: '`office_name_taken` (nome ativo repetido, sem caixa/espacos)' }
+  /kanban/offices/{officeId}:
+    patch:
+      tags: [Offices]
+      summary: Renomeia ou inativa/reativa (sem exclusao) (flow:admin)
+      parameters: [{ $ref: '#/components/parameters/OfficeId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 160 }
+                active: { type: boolean }
+                city: { type: [string, 'null'], maxLength: 120, description: 'Local do fecho da peticao (S7); com uf, ou os dois nulos' }
+                uf: { type: [string, 'null'], description: 'UF da cidade (S7)' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Office' }
+        '404': { description: '`office_not_found`' }
+        '422': { description: '`office_place_incomplete` (cidade sem UF ou UF sem cidade)' }
+        '409': { description: '`office_name_taken`' }
+  /kanban/office-users:
+    get:
+      tags: [Offices]
+      summary: Usuarios do Flow do tenant com seus escritorios (flow:admin)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/OfficeUser' } }
+  /kanban/office-users/{identityId}/offices:
+    put:
+      tags: [Offices]
+      summary: Substitui os escritorios do usuario (flow:admin)
+      description: >
+        Vinculo novo so com escritorio ativo; vinculo existente a escritorio
+        inativo pode ser mantido. Ao sair de um escritorio, o usuario deixa de
+        ser responsavel pelos cards (nao excluidos) desse escritorio
+        (`system_event` `card.assignee_removed` com `reason: office_removed`) e a
+        resposta lista os cards afetados (P28). Visibilidade muda na requisicao
+        seguinte do usuario e no evento realtime seguinte.
+      parameters:
+        - { name: identityId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [officeIds]
+              properties:
+                officeIds: { type: array, maxItems: 50, uniqueItems: true, items: { type: string, format: uuid } }
+                responsibleOfficeIds:
+                  type: array
+                  maxItems: 50
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                  description: 'ADR 018: escritorios (dentre officeIds) em que o usuario e responsavel; ausente mantem as marcacoes'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReplaceUserOfficesResult' }
+        '404': { description: '`flow_user_not_found` (sem entitlement ativo no Flow do tenant)' }
+        '422': { description: '`office_not_allowed` (inexistente ou inativo novo) ou `responsible_office_not_linked`' }
+  /kanban/office-settings:
+    get:
+      tags: [Offices]
+      summary: Chave do tenant e pre-visualizacao da ativacao (flow:admin)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfficeSettings' }
+    put:
+      tags: [Offices]
+      summary: Liga/desliga a visibilidade por escritorio (flow:admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [officeVisibilityEnabled]
+              properties:
+                officeVisibilityEnabled: { type: boolean }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OfficeSettings' }
+        '422': { description: '`no_active_office` (ligar sem escritorio ativo)' }
+  /kanban/boards/{boardId}/office-assignment:
+    post:
+      tags: [Offices]
+      summary: Atribuicao em lote do escritorio aos cards SEM escritorio do quadro (flow:admin)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [officeId]
+              properties:
+                officeId: { type: string, format: uuid }
+                cardIds: { type: array, maxItems: 500, uniqueItems: true, items: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: integer }
+                  cardIds: { type: array, items: { type: string, format: uuid } }
+        '422': { description: '`office_not_allowed` (destino inexistente ou inativo)' }
+  /kanban/boards/{boardId}/cards/{cardId}/office:
+    post:
+      tags: [Offices]
+      summary: Transfere o card de escritorio (flow:admin, motivo obrigatorio, P23)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [officeId, reason]
+              properties:
+                officeId: { type: string, format: uuid }
+                reason: { type: string, minLength: 10, maxLength: 500, description: 'aparado; vai para system_event card.office_changed e auditoria' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cardId: { type: string, format: uuid }
+                  fromOfficeId: { type: [string, 'null'], format: uuid }
+                  officeId: { type: string, format: uuid }
+                  changed: { type: boolean }
+        '404': { description: 'Card not found (inclui card invisivel ao admin com a chave desligada e sem membresia: 403)' }
+        '422': { description: '`office_not_allowed`' }
+  /kanban/boards/{boardId}/cards/{cardId}/assignees/candidates:
+    get:
+      tags: [CardVisibility]
+      summary: Candidatos a responsavel (membros ativos que veem o card)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    identityId: { type: string, format: uuid }
+                    role: { type: string, enum: [board_admin, board_member, board_viewer] }
+                    displayName: { type: [string, 'null'] }
+  /kanban/boards/{boardId}/cards/{cardId}/assignees:
+    post:
+      tags: [CardVisibility]
+      summary: (alterado) responsavel precisa ver o card
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '422': { description: 'novo `identity_not_in_card_office` (chave ligada)' }
+  /kanban/boards/{boardId}/cards:
+    post:
+      tags: [CardVisibility]
+      summary: (alterado) criacao com `officeId` opcional
+      parameters: [{ $ref: '#/components/parameters/BoardId' }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                officeId:
+                  type: string
+                  format: uuid
+                  description: >
+                    So com a chave ligada. Obrigatorio para flow:admin (qualquer
+                    escritorio ativo) e para quem tem mais de um escritorio ativo;
+                    automatico com um so. Chave desligada: ignorado.
+      responses:
+        '403': { description: 'novo `user_without_office` (chave ligada, sem escritorio ativo)' }
+        '422': { description: 'novos `office_required` e `office_not_allowed`' }
+  /kanban/boards/{boardId}/cards/{cardId}/customer/lookup:
+    post:
+      tags: [CardVisibility]
+      summary: (alterado) `found` com `crossOffice`/`canOverride`
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '200':
+          description: >
+            `{ status: found, customer, crossOffice?: true, canOverride?: true }`:
+            cliente visivel mas sem card no escritorio deste card; `canOverride` so
+            para flow:admin. `outside_boards` passa a incluir cliente de outro
+            escritorio no mesmo quadro.
+  /kanban/boards/{boardId}/cards/{cardId}/customer:
+    put:
+      tags: [CardVisibility]
+      summary: (alterado) vinculo entre escritorios (P30)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '409':
+          description: >
+            novos `cross_office_link_requires_admin` (nao admin) e
+            `cross_office_override_required` (admin sem `override.reason`). Com
+            override, o evento/auditoria leva `override: true`, `reason`,
+            `crossOffice: true`.
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    BoardId: { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+    CardId: { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+    OfficeId: { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Forbidden:
+      description: '`office_admin_required` ou `Insufficient scope`'
+  schemas:
+    Office:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        active: { type: boolean }
+        city: { type: [string, 'null'], description: 'Local do fecho da peticao (docs/product/flow-initial-petitions-sprints.md, S7)' }
+        uf: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OfficeListItem:
+      allOf:
+        - $ref: '#/components/schemas/Office'
+        - type: object
+          properties:
+            userCount: { type: integer }
+            cardCount: { type: integer, description: cards nao excluidos }
+    CreateOffice:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 160 }
+        city: { type: [string, 'null'], maxLength: 120, description: 'Com uf, ou os dois ausentes (S7)' }
+        uf: { type: [string, 'null'] }
+    OfficeContext:
+      type: object
+      properties:
+        officeVisibilityEnabled: { type: boolean }
+        isAdmin: { type: boolean }
+        userOfficeIds: { type: array, items: { type: string, format: uuid } }
+        offices:
+          type: array
+          description: admin = todos os escritorios do tenant; demais = so os proprios
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              active: { type: boolean }
+    OfficeUser:
+      type: object
+      properties:
+        identityId: { type: string, format: uuid }
+        displayName: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+        isAdmin: { type: boolean }
+        officeIds: { type: array, items: { type: string, format: uuid } }
+        responsibleOfficeIds: { type: array, items: { type: string, format: uuid }, description: 'ADR 018: escritorios em que e responsavel' }
+    ReplaceUserOfficesResult:
+      type: object
+      properties:
+        identityId: { type: string, format: uuid }
+        officeIds: { type: array, items: { type: string, format: uuid } }
+        added: { type: array, items: { type: string, format: uuid } }
+        removed: { type: array, items: { type: string, format: uuid } }
+        removedAssignments:
+          type: array
+          items:
+            type: object
+            properties:
+              boardId: { type: string, format: uuid }
+              boardName: { type: string }
+              cardId: { type: string, format: uuid }
+              cardTitle: { type: string }
+              officeId: { type: string, format: uuid }
+    OfficeSettings:
+      type: object
+      properties:
+        officeVisibilityEnabled: { type: boolean }
+        enabledAt: { type: [string, 'null'], format: date-time }
+        enabledByIdentityId: { type: [string, 'null'], format: uuid }
+        activeOfficeCount: { type: integer }
+        cardsWithoutOffice:
+          type: object
+          properties:
+            total: { type: integer }
+            byBoard:
+              type: array
+              items:
+                type: object
+                properties:
+                  boardId: { type: string, format: uuid }
+                  boardName: { type: string }
+                  count: { type: integer }
+        usersWithoutOffice:
+          type: array
+          description: usuarios do Flow sem escritorio e sem flow:admin
+          items:
+            type: object
+            properties:
+              identityId: { type: string, format: uuid }
+              displayName: { type: [string, 'null'] }
+    CardOfficeField:
+      description: Campo aditivo em todo card devolvido (lista, criacao, edicao, move)
+      type: object
+      properties:
+        officeId: { type: [string, 'null'], format: uuid }

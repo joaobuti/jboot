@@ -1,0 +1,6 @@
+Portions of the DataJud tribunal catalogue and parsing behavior are derived
+from mcp-juridico-brasil v0.1.0:
+https://github.com/DeHor-Labs/mcp-juridico-brasil
+
+Copyright (c) 2026 Nikolas de Hor
+Licensed under the MIT License. See THIRD_PARTY_LICENSES/MIT-mcp-juridico-brasil.txt.

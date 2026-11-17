@@ -1,0 +1,25 @@
+{
+  "_provenance": {
+    "source": "browser redirect to a local callback configured in POST https://api.checkout.infinitepay.io/links",
+    "captured_at": "2026-10-04",
+    "environment": "production_api_controlled_test",
+    "consulted_identifier": "merchant handle, order_nsu, transaction identifiers and slug redacted",
+    "request_summary": "BRL 1.00 Checkout Pix with local redirect_url",
+    "sanitization": [
+      "merchant handle omitted",
+      "order_nsu omitted",
+      "transaction_id redacted",
+      "transaction_nsu redacted",
+      "slug redacted",
+      "receipt identifier redacted"
+    ]
+  },
+  "callback": {
+    "capture_method": "pix",
+    "transaction_id": "<redacted-uuid>",
+    "transaction_nsu": "<redacted-uuid>",
+    "slug": "<redacted>",
+    "order_nsu": "<redacted>",
+    "receipt_url": "https://recibo.infinitepay.io/<redacted-uuid>"
+  }
+}

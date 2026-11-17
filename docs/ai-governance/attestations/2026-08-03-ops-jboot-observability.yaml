@@ -1,0 +1,70 @@
+schema_version: "1.0.0"
+execution_id: "20260803-ops-jboot-observability-v1"
+date: "2026-08-03"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: not_exposed
+revision: resolved_by_ci
+target_project: implementations/ops-jboot-observability
+target_module: null
+scope_paths:
+  - Makefile
+  - docker-compose.yml
+  - docker/otel
+  - docker/postgres/init/036_observability_capability.sql
+  - docs/architecture/implementation-contracts.md
+  - docs/ai-governance
+  - implementations/README.md
+  - implementations/ops-jboot-observability
+instruction_sources:
+  - AGENTS.md
+  - implementations/ops-jboot-observability/PROJECT_CONTRACT.md
+  - implementations/ops-jboot-observability/AI_CONTEXT.md
+  - implementations/ops-jboot-observability/agents/observability-platform-engineer.md
+  - implementations/ops-jboot-observability/agents/sre.md
+  - implementations/ops-jboot-observability/agents/security-engineer.md
+  - implementations/ops-jboot-observability/skills/observability-runtime.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+instruction_set_sha256: "b864fdf95673e667d1234db10940e5b7e23c6e5b2400440f6af04a7ec117c29c"
+context_sha256:
+  implementations/ops-jboot-observability/AI_CONTEXT.md: "75003fb6c15af6176b787828947ce6190c35dd717fe4705261f142831df53029"
+agents:
+  - implementations/ops-jboot-observability/agents/observability-platform-engineer.md
+  - implementations/ops-jboot-observability/agents/sre.md
+  - implementations/ops-jboot-observability/agents/security-engineer.md
+skills:
+  - implementations/ops-jboot-observability/skills/observability-runtime.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: usuario confirmou a arquitetura, persistencia e continuidade da implementacao
+security_review:
+  status: passed
+  evidence:
+    - security/SECURITY_CHECKLIST.md preenchido sem item aberto para a fundacao
+    - Trivy 0.70.0 executado para todas as imagens fixadas
+    - OTLP limitado a loopback e bridge Docker configurada, sem bind em 0.0.0.0
+    - redaction aplicada antes do storage nos tres sinais
+    - MinIO proibido em producao e excecoes locais de alcançabilidade registradas
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make observability-validate
+  - make observability-smoke
+  - make observability-root-smoke
+  - make ai-check
+  - make ai-conformance
+  - make ai-evidence
+  - make ai-diff-check
+  - git diff --check
+result: fundacao funcional OpenTelemetry/LGTM implementada com persistencia, recuperacao, tenancy, redaction, dashboard, alerta e encaminhamento do collector raiz comprovados

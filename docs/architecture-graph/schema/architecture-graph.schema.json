@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jboot.local/schemas/architecture-graph.schema.json",
+  "title": "JBoot Architecture Graph",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "generator", "summary", "nodes", "edges", "findings"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "generated_at": { "type": "string" },
+    "generator": { "const": "tools/ai/architecture-graph.py" },
+    "summary": { "type": "object" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "label", "lifecycle", "owner", "source", "provenance"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*:.+$" },
+        "type": { "type": "string" },
+        "label": { "type": "string", "minLength": 1 },
+        "lifecycle": { "enum": ["planned", "active", "deprecated", "retired", "historical", "derived"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "provenance": { "enum": ["registry", "contract", "repository", "api-contract-graph"] },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "type", "source", "target", "owner", "provenance", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string" },
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "provenance": { "enum": ["registry", "contract", "repository", "api-contract-graph"] },
+        "evidence": { "type": "string", "minLength": 1 },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["severity", "kind", "message"],
+      "properties": {
+        "severity": { "enum": ["error", "warning", "info"] },
+        "kind": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "source": { "type": ["string", "null"] },
+        "node_id": { "type": ["string", "null"] },
+        "edge_id": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

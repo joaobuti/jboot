@@ -1,0 +1,103 @@
+schema_version: "1.0.0"
+execution_id: "20261005-payments-infinitepay-pdv-sprint-2-v1"
+date: "2026-10-05"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-payments
+target_module: modules/pdv
+scope_paths:
+  - .env.example
+  - AGENTS.md
+  - docker-compose.yml
+  - docker/postgres/init/059_pdv_integrated_pix.sql
+  - docs/ai-governance
+  - docs/api/payments-sprint-1-openapi.yaml
+  - docs/product/payments-sprint-2-gate.md
+  - docs/product/payments-sprints.md
+  - docs/product/pdv-sprints.md
+  - docs/security/payments-sprint-2-security-checklist.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+  - implementations/svc-jboot-payments
+  - tools/ai
+  - tools/code-down.sh
+  - tools/code-up.sh
+instruction_sources:
+  - AGENTS.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+instruction_set_sha256: "faaaa7ae8a429dc3fb688d87b1d3f38fd850c2d146d7a9d2cfb00b3932089a8d"
+context_sha256:
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "362733a2ab763e0b7fa859bdf562d012c8b78258fc8fe5eab6790b8c333bf80c"
+  implementations/app-jboot-next-platform/modules/pdv/AI_CONTEXT.md: "38ac1802eb46f330495e8edbb9ba7dbb11f338fba163919839c17a9704d1995e"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "c2919e13927577974bbf8cf7bed21f0dac0aea28817de8d55bf7ddacdcbb5425"
+  implementations/bff-jboot-platform/modules/pdv/AI_CONTEXT.md: "79f7a4137f903ed2399b870600ab6e933b5cdc14b5aadd6ee72e62ee0ca71f27"
+  implementations/svc-jboot-payments/AI_CONTEXT.md: "4b3659f8b11aedb062024fc5c218cfe0a8d32ed823c1a92a6f69469ee872f2b6"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-cashier-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-admin-api-client.md
+human_approval:
+  status: approved
+  evidence: >-
+    Depois do preflight PO, PE e Architect, o usuario confirmou em 2026-10-05
+    a Sprint 2 e explicitou que selecionar PIX no PDV deve entrar no fluxo da
+    integracao. A autorizacao cobre a PoC web e nao cobre deploy ou producao.
+security_review:
+  status: passed
+  evidence:
+    - checklist preenchido em docs/security/payments-sprint-2-security-checklist.md
+    - callback e retorno do browser nao confirmam dinheiro sem payment_check positivo
+    - tenant, valor, metodo, parcelas e correlacao sao verificados
+    - segredo real e PII de pagador nao sao aceitos nem versionados
+    - advisories preexistentes foram medidos e producao permanece bloqueada
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - go test -race ./... com PostgreSQL, go vet e build no container
+  - 200 testes e type-check do BFF no container
+  - 20 testes, type-check e build Next no container
+  - code-up:pdv iniciou Identity, Platform, Payments API e worker
+  - health e readiness de Identity, Platform e Payments aprovados
+  - make ai-api-context para Payments e PDV
+  - make ai-api-impact e make ai-api-graph-gate aprovados
+  - audit de dependencias medido e bloqueios de producao registrados
+  - make ai-context e make ai-conformance
+result: >-
+  A PoC integra o PIX do caixa web ao Checkout InfinitePay por meio do BFF e do
+  servico independente Payments em Go. O pagamento manual Pix foi bloqueado;
+  uma cobranca idempotente e criada, o Checkout hospedado e aberto e a venda so
+  recebe uma linha confirmada depois de payment_check positivo e correlacionado.
+  A configuracao BYOA exige declaracao administrativa e preserva somente
+  referencia de segredo. Producao segue bloqueada pelos riscos documentados.

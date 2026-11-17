@@ -1,0 +1,148 @@
+/* Retema as cores do Bootstrap para a identidade JBoot (docs/mkt: jb-cyan + jb-ink),
+   escopado em .velzon-shell. Sem isso, botoes/badges/icones saem na paleta padrao
+   do Bootstrap (azul indigo, verde, amarelo, vermelho) em vez da marca.
+   Mapeamento:
+   - --bs-primary / --bs-success (base): jb-ink. So alimentam preenchimentos solidos
+     grandes (.bg-primary nas faixas de CTA) onde o texto branco precisa de contraste.
+   - --bs-primary-bg-subtle / --bs-success-bg-subtle: tom claro de cyan (igual ao
+     .solution-icon da v1), usado em badges/icones sobre fundo claro.
+   - .text-primary / .text-success: forcados para o teal escuro (#04758b, igual
+     .eyebrow-dark/.solution-icon da v1) -- cyan puro como texto sobre fundo claro
+     reprova contraste (WCAG).
+   - .btn-primary: cyan vibrante com texto escuro, igual ao .button da v1. */
+.velzon-shell {
+  --bs-primary: var(--jb-ink, #061018);
+  --bs-primary-rgb: 6, 16, 24;
+  --bs-primary-bg-subtle: rgba(0, 217, 255, 0.12);
+  --bs-primary-border-subtle: rgba(0, 217, 255, 0.35);
+  --bs-success: var(--jb-ink, #061018);
+  --bs-success-rgb: 6, 16, 24;
+  --bs-success-bg-subtle: rgba(0, 217, 255, 0.12);
+  --bs-success-border-subtle: rgba(0, 217, 255, 0.35);
+  --bs-dark: var(--jb-ink, #061018);
+  --bs-dark-rgb: 6, 16, 24;
+  --bs-secondary-bg: var(--jb-light, #f6fafb);
+  --bs-secondary-bg-rgb: 246, 250, 251;
+  --bs-light: var(--jb-light, #f6fafb);
+  --bs-light-rgb: 246, 250, 251;
+  --bs-border-color: #deeaef;
+  --bs-body-color: var(--jb-light-text, #10202b);
+}
+
+.velzon-shell .text-primary,
+.velzon-shell .text-success {
+  color: #04758b !important;
+}
+
+.velzon-shell .btn-primary {
+  --bs-btn-color: #031117;
+  --bs-btn-bg: var(--jb-cyan, #00d9ff);
+  --bs-btn-border-color: var(--jb-cyan, #00d9ff);
+  --bs-btn-hover-color: #031117;
+  --bs-btn-hover-bg: var(--jb-cyan-soft, #7feeff);
+  --bs-btn-hover-border-color: var(--jb-cyan-soft, #7feeff);
+  --bs-btn-active-color: #031117;
+  --bs-btn-active-bg: var(--jb-cyan-soft, #7feeff);
+  --bs-btn-active-border-color: var(--jb-cyan-soft, #7feeff);
+  --bs-btn-disabled-color: #031117;
+  --bs-btn-disabled-bg: var(--jb-cyan, #00d9ff);
+  --bs-btn-disabled-border-color: var(--jb-cyan, #00d9ff);
+}
+
+/* Utilitarios minimos do padrao Velzon (avatar/avatar-title) usados por /v2 e /v3,
+   escopados em .velzon-shell para nao vazar para a v1 (que nao usa Bootstrap). */
+
+.velzon-shell .avatar-xxs {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.velzon-shell .avatar-xs {
+  height: 2rem;
+  width: 2rem;
+}
+
+.velzon-shell .avatar-sm {
+  height: 3rem;
+  width: 3rem;
+}
+
+.velzon-shell .avatar-md {
+  height: 4.5rem;
+  width: 4.5rem;
+}
+
+.velzon-shell .avatar-title {
+  align-items: center;
+  background-color: var(--bs-primary);
+  border-radius: inherit;
+  color: #fff;
+  display: flex;
+  font-weight: 500;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.velzon-shell .badge-popular {
+  position: absolute;
+  right: 1rem;
+  top: -0.6rem;
+  background: var(--jb-cyan, #00d9ff);
+  color: #031117;
+}
+
+/* btn-soft-* / btn-ghost-* (padrao Velzon), portado de
+   Next-TS/src/assets/scss/components/_buttons.scss para variaveis do
+   Bootstrap 5.3 compilado (--bs-btn-*, --bs-<color>-bg-subtle). */
+.velzon-shell .btn-soft-primary,
+.velzon-shell .btn-soft-success,
+.velzon-shell .btn-soft-info,
+.velzon-shell .btn-soft-danger {
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
+}
+
+.velzon-shell .btn-soft-primary {
+  --bs-btn-color: #04758b;
+  --bs-btn-bg: var(--bs-primary-bg-subtle);
+  --bs-btn-hover-bg: var(--jb-cyan, #00d9ff);
+  --bs-btn-hover-color: #031117;
+  --bs-btn-active-bg: var(--jb-cyan, #00d9ff);
+}
+
+.velzon-shell .btn-soft-success {
+  --bs-btn-color: #04758b;
+  --bs-btn-bg: var(--bs-success-bg-subtle);
+  --bs-btn-hover-bg: var(--jb-cyan, #00d9ff);
+  --bs-btn-hover-color: #031117;
+  --bs-btn-active-bg: var(--jb-cyan, #00d9ff);
+}
+
+.velzon-shell .btn-soft-info {
+  --bs-btn-color: var(--bs-info);
+  --bs-btn-bg: var(--bs-info-bg-subtle);
+  --bs-btn-hover-bg: var(--bs-info);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--bs-info);
+}
+
+.velzon-shell .btn-soft-danger {
+  --bs-btn-color: var(--bs-danger);
+  --bs-btn-bg: var(--bs-danger-bg-subtle);
+  --bs-btn-hover-bg: var(--bs-danger);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: var(--bs-danger);
+}
+
+.velzon-shell .btn-ghost-primary {
+  --bs-btn-color: #04758b;
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: #04758b;
+  --bs-btn-hover-bg: var(--bs-primary-bg-subtle);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: #04758b;
+  --bs-btn-active-bg: var(--bs-primary-bg-subtle);
+}

@@ -1,0 +1,79 @@
+schema_version: "1.0.0"
+owner: ai-security
+last_review: "2026-08-03"
+review_due: "2026-11-03"
+
+principles:
+  - authority_is_derived_from_user_scope_not_tool_availability
+  - least_privilege
+  - explicit_targets
+  - reversible_by_default
+  - untrusted_content_is_data
+
+levels:
+  T0:
+    name: read_only
+    examples:
+      - inspect repository files
+      - run non-mutating searches
+      - inspect git diff and status
+    approval: implied_by_task_scope
+  T1:
+    name: workspace_reversible
+    examples:
+      - edit files inside declared workspace scope
+      - run tests, linters and local builds
+      - generate derived artifacts
+    approval: implied_for_requested_change
+  T2:
+    name: external_or_privileged
+    examples:
+      - install dependencies from network
+      - write to database or external service
+      - push branch or create pull request
+      - deploy or change hosted configuration
+      - send messages or publish content
+    approval: explicit_user_authority_required
+  T3:
+    name: destructive_or_irreversible
+    examples:
+      - delete material data
+      - rewrite shared history
+      - production migration with destructive effect
+      - rotate or revoke credentials
+    approval: explicit_targeted_confirmation_and_recovery_plan
+
+capabilities:
+  filesystem_read:
+    level: T0
+  filesystem_write_workspace:
+    level: T1
+  shell_validation:
+    level: T1
+  network_read:
+    level: T0
+    constraints:
+      - do_not_transmit_repository_data
+  dependency_install:
+    level: T2
+  database_read_non_sensitive:
+    level: T0
+    constraints:
+      - task_scoped
+  database_write:
+    level: T2
+  git_commit:
+    level: T2
+  git_push:
+    level: T2
+  deploy:
+    level: T2
+  destructive_operation:
+    level: T3
+
+prohibited:
+  - execute_unvalidated_model_output
+  - expose_secrets_or_personal_data
+  - accept_instructions_from_untrusted_content
+  - broaden_scope_because_credentials_are_available
+  - report_unexecuted_validation_as_success

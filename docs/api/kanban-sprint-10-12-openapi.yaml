@@ -1,0 +1,558 @@
+openapi: 3.1.0
+info:
+  title: Kanban Sprints 10-12 Permissions and AI API
+  version: 0.4.0
+  description: Contrato incremental das Sprints 10-12. Cada operacao declara o servico owner em x-jboot-service.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+paths:
+  /kanban/boards/{boardId}/columns/{columnId}/automation-rules:
+    get:
+      operationId: listColumnAutomationRules
+      x-jboot-service: bff-jboot-platform
+      parameters:
+        - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: columnId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Regras da coluna, incluindo automacoes de IA }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      operationId: createColumnAutomationRule
+      x-jboot-service: bff-jboot-platform
+      parameters:
+        - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: columnId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateColumnAutomationRule' } } }
+      responses:
+        '201': { description: Regra persistida }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /manager/module-permissions:
+    get:
+      operationId: listCurrentModulePermissions
+      x-jboot-service: bff-jboot-identity
+      summary: Lista somente permissoes do application_slug autenticado
+      responses:
+        '200':
+          description: Catalogo filtrado
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModulePermissionCatalog' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /manager/users/{identityId}/module-permissions:
+    put:
+      operationId: replaceUserCurrentModulePermissions
+      x-jboot-service: bff-jboot-identity
+      parameters: [{ $ref: '#/components/parameters/IdentityId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReplaceModulePermissions' } } }
+      responses:
+        '200':
+          description: Permissoes substituidas no modulo corrente
+          content: { application/json: { schema: { $ref: '#/components/schemas/ManagedModulePermissions' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /kanban/settings/users/context:
+    get:
+      operationId: getFlowUserManagementContext
+      x-jboot-service: bff-jboot-platform
+      responses:
+        '200':
+          description: Capability e escritorios permitidos
+          content: { application/json: { schema: { $ref: '#/components/schemas/FlowUserManagementContext' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /kanban/settings/users:
+    post:
+      operationId: provisionFlowUser
+      x-jboot-service: bff-jboot-platform
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '#/components/parameters/ServiceClientId' }
+        - { $ref: '#/components/parameters/ServiceApplicationSlug' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ProvisionFlowUser' } } }
+      responses:
+        '202':
+          description: Comando aceito ou replayado
+          content: { application/json: { schema: { $ref: '#/components/schemas/ProvisioningResult' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Mesma chave com payload diferente }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /v1/credentials:
+    get:
+      operationId: listAiCredentials
+      x-jboot-service: svc-jboot-ai-gateway
+      responses:
+        '200':
+          description: Credenciais sanitizadas do usuario/tenant
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AiCredential' } } } }
+    post:
+      operationId: createAiCredential
+      x-jboot-service: svc-jboot-ai-gateway
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateAiCredential' } } }
+      responses:
+        '201': { description: Chave cifrada e resposta sanitizada }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /v1/providers:
+    get:
+      operationId: listEnabledAiProviders
+      x-jboot-service: svc-jboot-ai-gateway
+      responses:
+        '200': { description: Catalogo sanitizado de providers Anthropic e OpenAI com capabilities explicitamente habilitadas }
+  /v1/tools:
+    get:
+      operationId: listAiTools
+      x-jboot-service: svc-jboot-ai-gateway
+      summary: Lista o capability manifest fechado disponivel para agentes
+      responses:
+        '200':
+          description: Versao da politica e tools com schemas e approval policy
+          content: { application/json: { schema: { $ref: '#/components/schemas/AiToolCatalog' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /v1/credentials/{credentialId}/test:
+    post:
+      operationId: testAiCredential
+      x-jboot-service: svc-jboot-ai-gateway
+      parameters: [{ $ref: '#/components/parameters/CredentialId' }]
+      responses:
+        '200': { description: Teste sem PII concluido }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: Provider ou credencial invalida; erro sanitizado }
+  /v1/credentials/{credentialId}/models:
+    get:
+      operationId: listAiCredentialModels
+      x-jboot-service: svc-jboot-ai-gateway
+      parameters: [{ $ref: '#/components/parameters/CredentialId' }]
+      responses:
+        '200':
+          description: Modelos da conta Anthropic ou OpenAI da credencial ativa do owner; o provider e resolvido pelo registro cifrado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, label, capabilities]
+                  properties:
+                    id: { type: string }
+                    label: { type: string }
+                    capabilities:
+                      type: array
+                      items: { type: string, enum: [text-output, structured-output] }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { description: Provider indisponivel; erro sanitizado }
+  /v1/credentials/{credentialId}:
+    delete:
+      operationId: revokeAiCredential
+      x-jboot-service: svc-jboot-ai-gateway
+      parameters: [{ $ref: '#/components/parameters/CredentialId' }]
+      responses:
+        '200': { description: Credencial revogada e material cifrado removido }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/agents:
+    get:
+      operationId: listAiAgents
+      x-jboot-service: svc-jboot-ai-gateway
+      responses:
+        '200':
+          description: Agentes do owner no modulo autenticado
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AiAgent' } } } }
+    post:
+      operationId: createAiAgent
+      x-jboot-service: svc-jboot-ai-gateway
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateAiAgent' } } }
+      responses:
+        '201': { description: Agente criado com versao 1 }
+        '400': { description: 'Campos do outro modo enviados (`ai_agent_routine_fields_only`, `ai_agent_api_fields_only`), credencial inativa ou modelo indisponivel' }
+        '409': { description: 'Nome ja usado por agente do mesmo dono no modulo, inclusive inativo (`ai_agent_name_taken`)' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /v1/agents/{agentId}:
+    patch:
+      operationId: updateAiAgent
+      x-jboot-service: svc-jboot-ai-gateway
+      parameters: [{ name: agentId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateAiAgent' } } }
+      responses:
+        '200': { description: Metadados atualizados; novo prompt gera versao imutavel }
+        '400': { description: 'Troca de modo (`ai_agent_execution_mode_immutable`) ou campos do outro modo' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'Nome ja usado (`ai_agent_name_taken`)' }
+    delete:
+      operationId: deactivateAiAgent
+      x-jboot-service: svc-jboot-ai-gateway
+      parameters: [{ name: agentId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Agente inativado }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/executions:
+    post:
+      operationId: executeAiAgent
+      x-jboot-service: svc-jboot-ai-gateway
+      security: [{ serviceBearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+        - { $ref: '#/components/parameters/ServiceClientId' }
+        - { $ref: '#/components/parameters/ServiceApplicationSlug' }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateAiExecution' } } }
+      responses:
+        '202':
+          description: Execucao concluida; output textual aparece somente na primeira resposta. requestedActions sao cifradas para replay idempotente e nunca executadas pelo Gateway. Agente `claude_routine` nao chama modelo e responde `dispatched` (rotina disparada) ou `failed`; `retryAfterSeconds` so aparece em falha reprocessavel (429/503 da Anthropic).
+          content: { application/json: { schema: { $ref: '#/components/schemas/AiExecutionResult' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Conflito de idempotencia }
+        '400': { description: Modelo fora da allowlist ou input acima de 64 KiB }
+        '429': { description: Limite de duas execucoes simultaneas ou vinte tentativas em 24h por tenant e owner }
+        '503': { description: Execucao desabilitada pelo kill switch }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /v1/interactions:
+    post:
+      operationId: interactWithAiAgent
+      x-jboot-service: svc-jboot-ai-gateway
+      summary: Executa interacao manual autenticada e devolve a saida somente nesta resposta
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateAiInteraction' } } }
+      responses:
+        '200':
+          description: Resultado textual efemero; replay recupera somente requestedActions cifradas, quando existirem
+          content: { application/json: { schema: { $ref: '#/components/schemas/AiInteraction' } } }
+        '400': { description: 'Idempotency-Key diferente de requestId, modelo nao habilitado, input acima do limite ou agente `claude_routine` (`ai_agent_mode_not_interactive`)' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Conflito de idempotencia }
+        '429': { description: Limite operacional excedido }
+        '503': { description: Execucao desabilitada pelo kill switch }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /v1/executions/{executionId}:
+    get:
+      operationId: getAiExecution
+      x-jboot-service: svc-jboot-ai-gateway
+      security: [{ serviceBearerAuth: [] }]
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - { $ref: '#/components/parameters/ServiceClientId' }
+        - { $ref: '#/components/parameters/ServiceApplicationSlug' }
+      responses:
+        '200': { description: Metadados sanitizados, sem prompt/input/output integral }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    serviceBearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    IdentityId: { name: identityId, in: path, required: true, schema: { type: string, format: uuid } }
+    CredentialId: { name: credentialId, in: path, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 160 } }
+    ServiceClientId: { name: X-JBoot-Client-Id, in: header, required: true, schema: { type: string, format: uuid } }
+    ServiceApplicationSlug: { name: X-JBoot-Application-Slug, in: header, required: true, schema: { type: string, pattern: '^[a-z0-9-]{1,80}$' } }
+  responses:
+    Forbidden: { description: Scope ou contexto insuficiente }
+    NotFound: { description: Inexistente ou fora do tenant/owner/modulo }
+    ValidationError: { description: Entrada invalida com codigo estruturado }
+  schemas:
+    CreateColumnAutomationRule:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [triggerType, actionType, recipientRole]
+          properties:
+            triggerType: { type: string, enum: [column_entered, column_left, due_date_approaching, card_stale, juridico_process_moved, djen_publication_received] }
+            actionType: { const: send_email_notification }
+            recipientRole: { type: string, enum: [assignee, creator, board_member] }
+            actionConfig:
+              type: object
+              additionalProperties: false
+              properties: { boardMemberIdentityId: { type: string, format: uuid } }
+            triggerConfig: { type: object }
+            isActive: { type: boolean }
+        - type: object
+          additionalProperties: false
+          required: [triggerType, actionType, actionConfig]
+          properties:
+            triggerType: { type: string, enum: [column_entered, column_left] }
+            actionType: { const: execute_ai_agent }
+            actionConfig:
+              type: object
+              additionalProperties: false
+              required: [agentId, connectionMode, inputPolicyVersion, toolPolicyVersion, expectedResult]
+              description: '`api_key` aceita 2026-10-15.v1 ou 2026-10-21.v1 (com a confirmacao `kanban.automation.complete`); `claude_routine` exige claude_routine.v1.'
+              properties:
+                agentId: { type: string, format: uuid }
+                connectionMode: { type: string, enum: [api_key, claude_routine] }
+                inputPolicyVersion: { const: 1 }
+                toolPolicyVersion: { type: string, enum: ['2026-10-15.v1', '2026-10-21.v1', claude_routine.v1] }
+                customerDocumentTypes:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string, enum: [identidade, cpf, comprovante_residencia, declaracao_residencia_terceiro, extrato_beneficio, hiscred] }
+                  description: 'So `claude_routine` (ADR 019): documentos do cliente do card que a rotina pode ler; ausente = todos os validados.'
+                expectedResult:
+                  type: string
+                  enum: [comment, action_analysis, initial_petitions]
+                  description: >-
+                    ADR 020. Define quem encerra a execucao e o que e concluir sem erro (dispara `ai_completed`).
+                    `comment`: confirmacao explicita (`flow_complete_automation` na rotina, `kanban.automation.complete`
+                    na chave de API); comentario nao conclui. `action_analysis` e `initial_petitions` so com
+                    `claude_routine`; concluem pela ferramenta propria do conector.
+                documentGenerator:
+                  type: string
+                  enum: [flow, ai]
+                  description: 'So em `initial_petitions`; ausente = `flow`.'
+            triggerConfig: { type: object, maxProperties: 0 }
+            isActive: { type: boolean }
+        - type: object
+          additionalProperties: false
+          required: [triggerType, actionType, actionConfig]
+          properties:
+            triggerType: { type: string, enum: [column_entered, column_left, due_date_approaching, card_stale, juridico_process_moved, ai_completed, signed_kit_approved, djen_publication_received] }
+            actionType: { const: move_card }
+            actionConfig:
+              type: object
+              additionalProperties: false
+              required: [toBoardColumnId]
+              properties:
+                toBoardColumnId: { type: string, format: uuid }
+            triggerConfig: { type: object }
+            isActive: { type: boolean }
+    ModulePermissionCatalog:
+      type: object
+      additionalProperties: false
+      required: [roles, scopes]
+      properties:
+        roles: { type: array, items: { $ref: '#/components/schemas/PermissionOption' } }
+        scopes: { type: array, items: { $ref: '#/components/schemas/PermissionOption' } }
+    PermissionOption:
+      type: object
+      additionalProperties: false
+      required: [key, label]
+      properties:
+        key: { type: string }
+        label: { type: string }
+    ReplaceModulePermissions:
+      type: object
+      additionalProperties: false
+      required: [roles, scopes]
+      properties:
+        roles: { type: array, uniqueItems: true, items: { type: string } }
+        scopes: { type: array, uniqueItems: true, items: { type: string } }
+    ManagedModulePermissions:
+      type: object
+      additionalProperties: false
+      required: [identityId, roles, scopes, status]
+      properties:
+        identityId: { type: string, format: uuid }
+        roles: { type: array, uniqueItems: true, items: { type: string } }
+        scopes: { type: array, uniqueItems: true, items: { type: string } }
+        status: { type: string }
+    FlowUserManagementContext:
+      type: object
+      required: [officeAssignmentMode, offices]
+      properties:
+        officeAssignmentMode: { type: string, enum: [selectable, inherited] }
+        offices: { type: array, items: { $ref: '#/components/schemas/OfficeOption' } }
+    OfficeOption:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 120 }
+    ProvisionFlowUser:
+      type: object
+      additionalProperties: false
+      required: [identity]
+      properties:
+        identity: { type: object, additionalProperties: true }
+        officeIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+    ProvisioningResult:
+      type: object
+      required: [commandId, state, identityId, officeIds, errorCode]
+      properties:
+        commandId: { type: string, format: uuid }
+        state: { type: string, enum: [processing, completed, failed] }
+        identityId: { type: [string, 'null'], format: uuid }
+        officeIds: { type: array, items: { type: string, format: uuid } }
+        errorCode: { type: [string, 'null'] }
+    AiCredential:
+      type: object
+      additionalProperties: false
+      required: [id, provider, last4, status]
+      properties:
+        id: { type: string, format: uuid }
+        provider: { type: string }
+        last4: { type: string, minLength: 4, maxLength: 4 }
+        status: { type: string, enum: [pending_validation, active, invalid, revoked] }
+    CreateAiCredential:
+      type: object
+      additionalProperties: false
+      required: [provider, apiKey]
+      properties:
+        provider: { type: string, maxLength: 64 }
+        apiKey: { type: string, minLength: 8, maxLength: 4096, writeOnly: true }
+    AiAgent:
+      type: object
+      additionalProperties: false
+      required: [id, applicationSlug, executionMode, credentialId, name, provider, model, responseMode, outputSchema, allowedTools, toolPolicyVersion, activeVersion, status]
+      properties:
+        id: { type: string, format: uuid }
+        applicationSlug: { type: string }
+        executionMode: { type: string, enum: [api, claude_routine] }
+        credentialId: { type: [string, 'null'], format: uuid, description: 'null em claude_routine' }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        provider: { type: string, description: 'claude_routine no modo rotina' }
+        model: { type: [string, 'null'], description: 'null em claude_routine' }
+        routineFireUrl: { type: [string, 'null'] }
+        routineTokenLast4: { type: [string, 'null'], description: 'Unica parte do token da rotina exposta' }
+        responseMode: { type: string, enum: [text, json_schema] }
+        outputSchema: { type: object }
+        allowedTools:
+          type: array
+          uniqueItems: true
+          maxItems: 16
+          items: { type: string }
+        toolPolicyVersion: { type: string }
+        externalReference: { type: [string, 'null'], readOnly: true }
+        activeVersion: { type: integer, minimum: 1 }
+        status: { type: string, enum: [draft, active, inactive, deleted] }
+    CreateAiAgent:
+      oneOf:
+        - { $ref: '#/components/schemas/CreateApiAiAgent' }
+        - { $ref: '#/components/schemas/CreateRoutineAiAgent' }
+    CreateRoutineAiAgent:
+      type: object
+      additionalProperties: false
+      description: Agente executado pela assinatura Claude do dono via rotina do Claude Code. O prompt efetivo fica na rotina; systemPrompt e referencia versionada.
+      required: [executionMode, name, routineFireUrl, routineToken]
+      properties:
+        executionMode: { const: claude_routine }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        routineFireUrl: { type: string, pattern: '^https://api\.anthropic\.com/v1/claude_code/routines/trig_[A-Za-z0-9]+/fire$' }
+        routineToken: { type: string, pattern: '^sk-ant-oat01-[A-Za-z0-9_-]{16,480}$', writeOnly: true }
+        systemPrompt: { type: string, maxLength: 120000, writeOnly: true, description: 'Copia de referencia, nunca executada pelo JBoot.' }
+        externalReference: { type: [string, 'null'], maxLength: 255 }
+    CreateApiAiAgent:
+      type: object
+      additionalProperties: false
+      required: [credentialId, name, model, systemPrompt, responseMode]
+      properties:
+        executionMode: { const: api }
+        credentialId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        model: { type: string, minLength: 1, maxLength: 120 }
+        systemPrompt: { type: string, minLength: 1, maxLength: 50000, writeOnly: true }
+        responseMode: { type: string, enum: [text, json_schema] }
+        outputSchema: { type: object }
+        allowedTools:
+          type: array
+          uniqueItems: true
+          maxItems: 16
+          items: { type: string }
+        externalReference: { type: [string, 'null'], maxLength: 255 }
+    UpdateAiAgent:
+      type: object
+      additionalProperties: false
+      description: Metadados sao opcionais. Alterar prompt, responseMode, outputSchema ou allowedTools cria nova versao imutavel e exige systemPrompt. executionMode e imutavel; agente claude_routine aceita somente name, description, externalReference, systemPrompt, routineFireUrl e routineToken (token omitido e mantido). systemPrompt aceita ate 120000 caracteres no agente claude_routine (copia de referencia) e ate 50000 no agente api (prompt executado).
+      properties:
+        executionMode: { type: string, enum: [api, claude_routine] }
+        routineFireUrl: { type: string }
+        routineToken: { type: string, writeOnly: true }
+        credentialId: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, 'null'], maxLength: 500 }
+        model: { type: string, minLength: 1, maxLength: 120 }
+        systemPrompt: { type: string, minLength: 1, maxLength: 120000, writeOnly: true }
+        responseMode: { type: string, enum: [text, json_schema] }
+        outputSchema: { type: object }
+        allowedTools:
+          type: array
+          uniqueItems: true
+          maxItems: 16
+          items: { type: string }
+        externalReference: { type: [string, 'null'], maxLength: 255 }
+    CreateAiExecution:
+      type: object
+      additionalProperties: false
+      required: [clientId, requesterIdentityId, applicationSlug, agentId, sourceType, sourceId, input]
+      properties:
+        clientId: { type: string, format: uuid }
+        requesterIdentityId: { type: string, format: uuid }
+        applicationSlug: { type: string, maxLength: 80 }
+        agentId: { type: string, format: uuid }
+        sourceType: { type: string, maxLength: 80 }
+        sourceId: { type: string, format: uuid }
+        input: { type: object, additionalProperties: true, writeOnly: true }
+    AiExecution:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, running, succeeded, failed, cancelled, dispatched] }
+        errorCode: { type: [string, 'null'] }
+        executionMode: { type: string, enum: [api, claude_routine] }
+        externalSessionUrl: { type: [string, 'null'], description: 'Sessao do Claude Code criada pelo disparo da rotina' }
+    AiRequestedAction:
+      type: object
+      additionalProperties: false
+      required: [callId, toolId, arguments]
+      properties:
+        callId: { type: string }
+        toolId: { type: string }
+        arguments: { type: object, additionalProperties: true }
+    AiExecutionResult:
+      allOf:
+        - { $ref: '#/components/schemas/AiExecution' }
+        - type: object
+          required: [output, requestedActions, outputAvailable, replayed]
+          properties:
+            output: {}
+            requestedActions: { type: array, items: { $ref: '#/components/schemas/AiRequestedAction' } }
+            outputAvailable: { type: boolean }
+            replayed: { type: boolean }
+            retryAfterSeconds: { type: integer, minimum: 1, description: 'Somente em falha reprocessavel de rotina (429/503)' }
+    CreateAiInteraction:
+      type: object
+      additionalProperties: false
+      required: [agentId, requestId, input]
+      properties:
+        agentId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        input: { type: object, additionalProperties: true, writeOnly: true }
+    AiInteraction:
+      allOf:
+        - { $ref: '#/components/schemas/AiExecutionResult' }
+    AiToolCatalog:
+      type: object
+      additionalProperties: false
+      required: [policyVersion, tools]
+      properties:
+        policyVersion: { type: string }
+        tools:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, functionName, label, description, approvalPolicy, inputSchema]
+            properties:
+              id: { type: string }
+              functionName: { type: string }
+              label: { type: string }
+              description: { type: string }
+              approvalPolicy: { type: string, enum: [automatic, human_review] }
+              inputSchema: { type: object }

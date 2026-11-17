@@ -1,0 +1,63 @@
+schema_version: 1.0.0
+execution_id: 20261115-portfolio-refresh-v1
+date: '2026-11-15'
+mode: implementation
+status: success
+runtime: codex-desktop
+model: not_exposed
+revision: resolved_by_ci
+target_project: implementations/site-joao-buti-portfolio
+target_module: null
+scope_paths:
+- implementations/site-joao-buti-portfolio
+- docs/ai-governance/attestations/2026-11-15-portfolio-refresh.yaml
+instruction_sources:
+- AGENTS.md
+- implementations/site-joao-buti-portfolio/PROJECT_CONTRACT.md
+- docs/agents/orchestration/marketing-brand.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/site-joao-buti-portfolio/agents/frontend-engineer.md
+- implementations/site-joao-buti-portfolio/agents/seo-content-engineer.md
+- implementations/site-joao-buti-portfolio/agents/qa-engineer.md
+- docs/skills/ai-first-governance/SKILL.md
+- implementations/site-joao-buti-portfolio/skills/astro-static-site.md
+- implementations/site-joao-buti-portfolio/skills/seo-baseline.md
+- implementations/site-joao-buti-portfolio/skills/qa-web-smoke.md
+instruction_set_sha256: 07c64421b666f5270a1cf80738ec49a5b49f8d137c03ff86e38c2a708ee6aa33
+context_sha256:
+  implementations/site-joao-buti-portfolio/AI_CONTEXT.md: 4ceb6910c1b25eca521e7224de1133bd3852f4c23a4e23b715d66ab872d82c77
+agents:
+- docs/agents/orchestration/marketing-brand.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/site-joao-buti-portfolio/agents/frontend-engineer.md
+- implementations/site-joao-buti-portfolio/agents/seo-content-engineer.md
+- implementations/site-joao-buti-portfolio/agents/qa-engineer.md
+skills:
+- docs/skills/ai-first-governance/SKILL.md
+- implementations/site-joao-buti-portfolio/skills/astro-static-site.md
+- implementations/site-joao-buti-portfolio/skills/seo-baseline.md
+- implementations/site-joao-buti-portfolio/skills/qa-web-smoke.md
+human_approval:
+  status: approved
+  evidence: Usuario autorizou a revisao do portfolio e solicitou merge e push.
+security_review:
+  status: not_applicable
+  evidence:
+  - Rotas estaticas, sem alteracao de API, autenticacao, dados ou dependencias.
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- 'npm run test: 5 testes aprovados'
+- 'npm run check: zero erros'
+- 'npm run build: 19 paginas estaticas'
+- 'Smoke Chromium: 18 rotas localizadas, alternancia de idiomas e 12 combinacoes de
+  viewport e idioma'
+- Metadados do grafo verificados no HTML gerado em PT, EN e ES
+- make ai-check
+result: Trajetoria revisada, cases localizados compartilhados, navegacao movel e metricas
+  do grafo com data e proveniencia.

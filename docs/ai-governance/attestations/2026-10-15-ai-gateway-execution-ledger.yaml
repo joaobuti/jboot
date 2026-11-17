@@ -1,0 +1,63 @@
+schema_version: "1.0.0"
+execution_id: "20261015-ai-gateway-execution-ledger-v1"
+date: "2026-10-15"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-ai-gateway
+target_module: none
+scope_paths:
+  - implementations/svc-jboot-ai-gateway/src/ai/executions
+  - implementations/svc-jboot-ai-gateway/src/auth/service-auth.guard.ts
+  - implementations/svc-jboot-ai-gateway/src/ai/providers/fake-provider.adapter.ts
+  - docker/postgres/init/074_ai_gateway_executions.sql
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+instruction_set_sha256: "6ce29d51ee74ab994d56f61516aab11725a9b7685dc01d39e296e129e849e73e"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "7b3f527f68c5eb0aa6c5aa51ccf017abb80a5169e13cf15ce9d1908279fdead5"
+agents:
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+skills:
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: O usuario autorizou continuar os blocos nao bloqueados da Sprint 11; o provider fake e a estrategia segura ja estavam confirmados.
+security_review:
+  status: passed
+  evidence:
+    - autenticacao s2s fail-closed com contexto de tenant e modulo vinculado ao payload
+    - agente e credencial ativos revalidados por tenant owner e modulo
+    - prompt e chave descriptografados somente em memoria e nunca retornados
+    - ledger armazena hashes e metadados sem input output prompt ou segredo integral
+    - idempotencia converge concorrencia e rejeita input divergente
+    - provider nao suportado falha sem fallback
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 11 testes passaram dentro do container com PostgreSQL real
+  - type-check lint e build passaram dentro do container
+  - npm audit --omit=dev reportou zero vulnerabilidades
+  - chamadas sem token falham 401 e contexto valido com agente inexistente falha fechado 404
+  - API Contract Graph gate passou sem erros
+  - AI-first conformance passou com 39 cenarios e 56 testes
+result: >-
+  Executor s2s e ledger sanitizado para o provider fake estao implementados.
+  A Sprint 11 permanece parcial: timeout, retry, quota, circuit breaker, kill
+  switch, cancelamento, expurgo e providers reais continuam pendentes. O
+  Architecture Graph registry/gate ainda nao esta disponivel e nao e declarado
+  sincronizado.

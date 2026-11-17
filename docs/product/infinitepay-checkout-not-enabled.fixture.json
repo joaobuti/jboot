@@ -1,0 +1,19 @@
+{
+  "_provenance": {
+    "source": "POST https://api.checkout.infinitepay.io/links",
+    "captured_at": "2026-10-04",
+    "environment": "production_api_controlled_test",
+    "consulted_identifier": "order_nsu and merchant handle redacted",
+    "request_summary": "one item, quantity 1, BRL 1.00",
+    "sanitization": [
+      "merchant handle omitted",
+      "order_nsu omitted"
+    ]
+  },
+  "response": {
+    "success": false,
+    "error": "external_checkout_not_enabled",
+    "message": "External checkout is not enabled for this merchant. Enable it in your checkout settings to start creating payment links.",
+    "redirect_url": "https://app.infinitepay.io/external-checkout#configuracoes?enabled=true"
+  }
+}

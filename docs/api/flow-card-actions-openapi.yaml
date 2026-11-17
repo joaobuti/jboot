@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: Flow manual card actions
+  version: 1.0.0
+security:
+  - bearerAuth: []
+paths:
+  /kanban/boards/{boardId}/actions:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+    get:
+      summary: Catalog and assignments for visible columns, or all columns for client master
+      responses:
+        '200':
+          description: Explicit catalog, category labels, visible columns, assignments and effective permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoardActions'
+        '401': { description: Invalid or absent Flow JWT }
+        '403': { description: Active board membership required for non-master }
+        '404': { description: Board absent in authenticated tenant }
+        '429': { description: Per-tenant and identity limit exceeded }
+  /kanban/boards/{boardId}/columns/{columnId}/actions:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - name: columnId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Atomically replace column assignments (global_master or client_admin with flow:admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [actionIds]
+              properties:
+                actionIds:
+                  type: array
+                  uniqueItems: true
+                  maxItems: 50
+                  items: { type: string, maxLength: 80 }
+                configs:
+                  type: array
+                  maxItems: 50
+                  description: >-
+                    Required for actions with config=routine_agent in the catalog (validar-assinatura,
+                    flow-signed-kit S5): routine agent of the configuring identity, which becomes the executor.
+                    Refused for actions that do not use config or are not in actionIds.
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [actionId, agentId]
+                    properties:
+                      actionId: { type: string, maxLength: 80 }
+                      agentId: { type: string, format: uuid }
+      responses:
+        '204': { description: Associations and audit committed; empty array clears assignments }
+        '400': { description: Invalid UUID or payload, card_action_config_required, card_action_config_not_allowed }
+        '401': { description: Invalid or absent Flow JWT }
+        '403': { description: card_actions_admin_required }
+        '404': { description: Board/active column absent in tenant or action not board-selectable }
+        '429': { description: Rate limited }
+  /kanban/boards/{boardId}/cards/{cardId}/actions/{actionId}/execute:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - name: cardId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: actionId
+        in: path
+        required: true
+        schema: { type: string, enum: [gerar-protocolo, monitorar, validar-assinatura] }
+    post:
+      summary: Execute confirmation handler for the visible card's current column
+      description: >-
+        Only actions with interaction=execute (gerar-protocolo, validar-assinatura). Dialog actions (monitorar)
+        answer 400 card_action_requires_dialog before any write and use their own API (see below).
+        validar-assinatura (flow-signed-kit S5) starts the Validador de assinatura for the current signed kit of
+        the card customer with the agent of the column assignment; the routine runs as the identity that
+        configured the assignment. 409 signed_kit_not_found, signature_validation_not_allowed (in progress or
+        approved) or the gateway error code when dispatch fails (run recorded as failed).
+        
+        Requires flow:actions:execute or client/global master, board operation
+        role and editable column for non-master. Preserves card visibility.
+        Locks active card and column, checks assignment and audits atomically.
+        Initial handlers have no external/domain side effects. Repeated clicks
+        are independent confirmations, not idempotent protocol operations.
+      responses:
+        '200':
+          description: Handler confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [actionId, cardId, message]
+                properties:
+                  actionId: { type: string }
+                  cardId: { type: string, format: uuid }
+                  message: { type: string, example: backend acao Monitorar }
+        '400': { description: Invalid UUID, card_action_requires_dialog or card_action_config_missing }
+        '401': { description: Invalid or absent Flow JWT }
+        '403': { description: Missing execution scope, board role or column edit access }
+        '404': { description: Card absent/archived/invisible, inactive column or unavailable action }
+        '409': { description: card_action_not_assigned, card_action_column_changed, signed_kit_not_found, signature_validation_not_allowed or dispatch failure code }
+        '429': { description: Rate limited }
+  /domain-integrations/flow/cards/{cardId}/peticoes/monitoramento:
+    parameters:
+      - name: cardId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Monitorar (Sprint 2) - approved petitions with CNJ not yet sent, destination boards
+      description: >-
+        Same preconditions as executing the action: flow:actions:execute (or master), visible active card,
+        editable column and action monitorar assigned to the card's current column. Destination boards are the
+        caller's active boards with a default column, origin board excluded. canCreateBoard = flow:admin.
+      responses:
+        '200':
+          description: Options
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [petitions, boards, canCreateBoard, monitoringEnabled]
+                properties:
+                  petitions:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, fileName, bank, court, processNumber]
+                      properties:
+                        id: { type: string, format: uuid }
+                        fileName: { type: string }
+                        bank: { type: string }
+                        court: { type: string, enum: [jec, jef] }
+                        processNumber: { type: string, description: masked CNJ }
+                  boards:
+                    type: array
+                    items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+                  canCreateBoard: { type: boolean }
+                  monitoringEnabled: { type: boolean, description: Capacity monitoramento-processual enabled for the client (ADR 021) }
+        '403': { description: Missing execution scope, board role, column edit access or card_action_not_assigned }
+        '404': { description: Card absent or invisible }
+    post:
+      summary: Monitorar (Sprint 2) - each petition becomes a card on the chosen monitoring board
+      description: >-
+        Per petition: per-tenant CNJ uniqueness checked against juridico_data_flow_exports before creating;
+        card in the default column of targetBoardId (source kanban/flow_petition/<petitionId>, office of the
+        origin card, customer linked); petition marked as sent (idempotent, a resend returns the existing card);
+        daily DataJud monitor ensured (reused and restarted when the process is already monitored); link with
+        origin flow_petition so movements reach the card as system events. Requires juridico:read entitlement.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [petitionIds, targetBoardId]
+              properties:
+                petitionIds: { type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: { type: string, format: uuid } }
+                targetBoardId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Cards created or recovered
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sent]
+                properties:
+                  sent:
+                    type: array
+                    items:
+                      type: object
+                      required: [petitionId, boardId, cardId, cardUrl, created]
+                      properties:
+                        petitionId: { type: string, format: uuid }
+                        boardId: { type: string, format: uuid }
+                        cardId: { type: string, format: uuid }
+                        cardUrl: { type: string }
+                        created: { type: boolean }
+        '400': { description: Invalid payload or monitoring_board_same_as_origin }
+        '403': { description: process_monitoring_not_contracted, missing role/scope on origin or target board, card_action_not_assigned }
+        '404': { description: Card absent/invisible, petition_not_found, target board without default column }
+        '409': { description: process_number_in_use (with cardId/cardUrl), process_monitor_in_use (monitored in Juridico), petition_without_process_number, petition_not_monitorable }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    BoardId:
+      name: boardId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    CardAction:
+      type: object
+      required: [id, category, label, description, icon, boardSelectable]
+      properties:
+        id: { type: string }
+        category: { type: string }
+        label: { type: string }
+        description: { type: string }
+        icon: { type: string }
+        boardSelectable: { type: boolean }
+        interaction: { type: string, enum: [execute, dialog] }
+        perCardAvailability: { type: boolean }
+        config: { type: string, enum: [routine_agent], description: Configuration required when assigning the action }
+    BoardActions:
+      type: object
+      required: [categories, actions, columns, assignments, canConfigure, canExecute]
+      properties:
+        categories:
+          type: array
+          items:
+            type: object
+            required: [id, label]
+            properties:
+              id: { type: string }
+              label: { type: string }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/CardAction' }
+        columns:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+        assignments:
+          type: array
+          items:
+            type: object
+            required: [columnId, actionId, agentId, configuredByCurrentUser]
+            properties:
+              columnId: { type: string, format: uuid }
+              actionId: { type: string }
+              agentId: { type: string, format: uuid, nullable: true }
+              configuredByCurrentUser: { type: boolean }
+        availableCardIds:
+          type: object
+          description: Per action with perCardAvailability, the board cards where it has something to do
+          additionalProperties: { type: array, items: { type: string, format: uuid } }
+        canConfigure: { type: boolean }
+        canExecute: { type: boolean }

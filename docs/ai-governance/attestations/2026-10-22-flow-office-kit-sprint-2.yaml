@@ -1,0 +1,95 @@
+schema_version: "1.0.0"
+execution_id: "20261022-flow-office-kit-sprint-2"
+date: "2026-10-22"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker/postgres/init/097_kanban_validation_tag_values.sql
+  - docker/postgres/init/098_kanban_validation_intake_card.sql
+  - docker/postgres/init/099_kanban_validation_routine_pickup.sql
+  - docs/ai-governance/attestations
+  - docs/api/flow-customer-documents-openapi.yaml
+  - docs/api/kanban-claude-connector-openapi.yaml
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  - docs/product/flow-office-service-contract-sprints.md
+  - docs/product/flow-office-kit-routine-prompt.md
+  - docs/product/flow-action-analysis-routine-prompt.md
+  - docs/product/flow-action-analysis-sprints.md
+  - docs/api/flow-action-analysis-openapi.yaml
+  - docker/postgres/init/100_kanban_card_action_analyses.sql
+  - docs/security/flow-customer-documents-checklist.md
+  - docs/runbooks/claudeconf.md
+  - docs/runbooks/flow-drive-sync.md
+  - docs/runbooks/flow-claude-connector.md
+  - tools/dev/claude-tunnel.sh
+  - tools/dev/flow-tunnel-apply.sh
+  - Makefile
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "7128de183c9ff4eef28847393b538f18e26a3aecccf0046ff3d206ece06ba4cc"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "46eb9fa00666ee6d4f07285901c717ebf614eced6390d86d02c03d6fa8fbe8da"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "b9bf1ad332cdeefb8562e5ae8744e7ad48ab863d9dafbcbe82cbddb4915b7845"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-22 o usuario definiu que o modelo do escritorio contem todas as tags do
+    kit e que o kit sai da substituicao pelos valores da IA; pediu documentos por etapa;
+    confirmou as recomendacoes 4 a 9 da ADR 019, dado de entrevista ausente impeditivo,
+    renuncia pela regra do prompt do escritorio, .docx, declaracao de residencia fora do
+    kit e HISCRED so na Analise de Acoes; aprovou o commit e o inicio da Sprint 2.
+security_review:
+  status: passed
+  evidence:
+    - docs/security/flow-customer-documents-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migration 097 aplicada no banco de dev
+  - BFF no container - type-check, lint, build e 689 testes (687 passam, 2 ignorados ja existentes), com PostgreSQL real para politica, modelo no run, valores do kit e revisao
+  - Web no container - type-check, lint, 146 testes e next build
+  - make ai-check aprovado
+result: >-
+  Sprint 2 do kit do escritorio (ADR 019): o pedido de validacao leva so os documentos
+  liberados e o modelo do kit do escritorio; o parecer aprovado traz valores por tag,
+  genero e JEC/JEF, normalizados contra o modelo; revisao humana dos valores na etapa
+  Validacao; documentos por etapa na validacao e na regra Executar agente; selo nao
+  conferido pela IA; prompt padrao novo. Smoke com a rotina real pendente.

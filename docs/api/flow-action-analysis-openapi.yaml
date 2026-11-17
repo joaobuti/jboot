@@ -1,0 +1,82 @@
+openapi: 3.1.0
+info:
+  title: Flow — Analise De Acoes No Card
+  version: 0.1.0
+  description: |
+    Sprint A1 de docs/product/flow-action-analysis-sprints.md (ADR 019, decisao 18). A rotina
+    registra a analise pela tool `flow_submit_action_analysis` do conector Claude
+    (docs/api/kanban-claude-connector-openapi.yaml); esta rota so le o resultado para a tela do
+    card. Card invisivel ao usuario responde 404.
+servers:
+  - url: https://apinode.jboot.com.br
+security:
+  - bearerAuth: []
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/action-analysis:
+    get:
+      summary: Analise de acoes mais recente do card
+      parameters:
+        - { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: '`analysis` nulo quando o card nunca teve analise.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [analysis]
+                properties:
+                  analysis:
+                    oneOf:
+                      - type: 'null'
+                      - $ref: '#/components/schemas/ActionAnalysis'
+        '404': { description: Board ou card nao encontrado, ou card invisivel ao usuario }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    ActionAnalysis:
+      type: object
+      required: [id, cardId, customerId, automationRunId, status, actionCount, moveOutcome, createdAt, actions]
+      properties:
+        id: { type: string, format: uuid }
+        cardId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid }
+        automationRunId: { type: string, format: uuid }
+        status: { type: string, enum: [concluida, nao_concluida] }
+        failureReason: { type: [string, 'null'] }
+        holderName: { type: [string, 'null'] }
+        benefitNumber: { type: [string, 'null'] }
+        statementDate: { type: [string, 'null'] }
+        actionCount: { type: integer, minimum: 0 }
+        moveOutcome: { type: string, enum: [pending, moved, no_actions, not_concluded, not_configured, card_moved_meanwhile, blocked] }
+        moveDetail: { type: [string, 'null'], description: 'moved: nome da coluna; blocked: motivo do bloqueio' }
+        targetColumnId: { type: [string, 'null'], format: uuid }
+        submittedByIdentityId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        actions:
+          type: array
+          description: Ordem dos blocos do cliente (caixa, e, a, b, c, d) e posicao no bloco
+          items:
+            type: object
+            required: [id, block, position, bank, contracts]
+            properties:
+              id: { type: string, format: uuid }
+              block: { type: string, enum: [caixa, e, a, b, c, d] }
+              position: { type: integer, minimum: 1 }
+              bank: { type: string }
+              year: { type: [string, 'null'] }
+              rootContract: { type: [string, 'null'] }
+              observations: { type: [string, 'null'] }
+              contracts:
+                type: array
+                items:
+                  type: object
+                  required: [number]
+                  properties:
+                    number: { type: string }
+                    status: { type: string }
+                    inclusionDate: { type: string }
+                    cardType: { type: string, enum: [RMC, RCC] }
+                    limit: { type: string }

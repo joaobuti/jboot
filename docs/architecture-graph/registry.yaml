@@ -1,0 +1,571 @@
+schema_version: "1.0.0"
+
+nodes:
+  - id: capability:process-monitoring
+    type: capability
+    label: Process monitoring capability (monitoramento-processual)
+    lifecycle: active
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    source: implementations/bff-jboot-platform/src/modules/process-monitoring/process-monitoring.service.ts
+    evidence: docs/architecture/decisions/021-process-monitoring-capability.md
+    metadata:
+      description: Independent DataJud process monitoring used by Juridico and Flow; single monitor per client and process, with origin and destination.
+
+  - id: capability:process-publications
+    type: capability
+    label: Process publications capability (publicacoes-processuais, DJEN)
+    lifecycle: active
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    source: implementations/bff-jboot-platform/src/modules/process-monitoring/process-monitoring.service.ts
+    evidence: docs/architecture/decisions/022-process-publications-capability.md
+    metadata:
+      description: DJEN publications by process number for Flow monitors; sold separately and dependent on monitoramento-processual; own Temporal queue process-publications.
+
+  - id: external_system:djen
+    type: external_system
+    label: DJEN (Diario de Justica Eletronico Nacional, comunicaapi.pje.jus.br)
+    lifecycle: active
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    source: implementations/svc-jboot-juridico-data/src/juridico_data/integrations/djen.py
+
+  - id: capability:flow-ai-completion-movement
+    type: capability
+    label: Flow explicit AI completion and governed card movement
+    lifecycle: active
+    owner: kanban
+    source: implementations/bff-jboot-platform/src/modules/kanban/automation/movement-automation.service.ts
+
+  - id: capability:ai-automation-completion-signal
+    type: capability
+    label: Structured automation completion signal
+    lifecycle: active
+    owner: ai-gateway
+    source: implementations/svc-jboot-ai-gateway/src/ai/tools/tool-catalog.ts
+
+  - id: capability:flow-card-actions
+    type: capability
+    label: Flow manual card actions by column
+    lifecycle: active
+    owner: kanban
+    source: implementations/bff-jboot-platform/src/modules/kanban/actions/card-actions.service.ts
+
+  - id: capability:flow-petition-monitoring
+    type: capability
+    label: Flow petition process number and monitoring board
+    lifecycle: active
+    owner: kanban
+    source: implementations/bff-jboot-platform/src/modules/kanban/actions/petition-monitoring.service.ts
+    metadata:
+      description: Approved initial petition gets its CNJ registered manually; the column action Monitorar turns it into a card on a chosen monitoring board with a daily DataJud monitor (flow_petition link in juridico_data_flow_exports).
+
+  - id: capability:flow-process-import
+    type: capability
+    label: Flow import of ongoing processes from spreadsheet
+    lifecycle: active
+    owner: kanban
+    source: implementations/bff-jboot-platform/src/modules/kanban/process-import/process-import-cards.service.ts
+    metadata:
+      description: Office imports ongoing lawsuits from .xlsx (name, CPF, CNJ); each ready row becomes customer + card on the chosen board with daily DataJud monitor (flow_import link), processed in the flow-process-import queue.
+
+  - id: repository:jboot
+    type: repository
+    label: JBoot
+    lifecycle: active
+    owner: ai-architecture
+    source: docs/ai-architecture.md
+    metadata:
+      description: Repository and AI-first engineering boundary.
+
+  - id: capability:ai-first-engineering-harness
+    type: capability
+    label: AI-first Engineering Harness
+    lifecycle: active
+    owner: ai-architecture
+    source: docs/ai-architecture.md
+
+  - id: capability:architecture-graph
+    type: capability
+    label: Architecture Graph
+    lifecycle: active
+    owner: ai-architecture
+    source: docs/ai-governance/records/decisions/2026-10-06-architecture-graph-engineering.md
+
+  - id: integration:juridico-flow
+    type: integration
+    label: Juridico to Flow Integration
+    lifecycle: active
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    source: implementations/bff-jboot-platform/modules/domain-integrations/MODULE_CONTRACT.md
+    metadata:
+      description: Cross-domain export, monitoring and process-change coordination.
+
+  - id: tool:architecture-graph-viewer
+    type: tool
+    label: Architecture Graph Viewer
+    lifecycle: active
+    owner: ai-architecture
+    source: tools/ai/architecture-graph-viewer/package.json
+
+  - id: capability:flow-claude-connector
+    type: capability
+    label: Flow Claude Connector (MCP)
+    lifecycle: active
+    owner: kanban
+    source: docs/product/kanban-claude-connector-sprints.md
+    metadata:
+      description: Remote MCP resource server at /kanban/mcp; lifecycle_status functional, external smoke pending.
+
+  - id: capability:identity-oauth-authorization-server
+    type: capability
+    label: Identity OAuth 2.1 Authorization Server
+    lifecycle: active
+    owner: identity
+    source: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+    metadata:
+      description: CIMD clients, PKCE, opaque tokens and s2s introspection for the Flow connector.
+
+  - id: capability:claude-routine-dispatch
+    type: capability
+    label: Claude Routine Dispatch
+    lifecycle: active
+    owner: ai-gateway
+    source: implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+    metadata:
+      description: claude_routine agents fire the owner's Claude Code routine with run identifiers only.
+
+  - id: external_system:anthropic-claude
+    type: external_system
+    label: Anthropic Claude (Claude.ai, Claude Code Routines)
+    lifecycle: active
+    owner: kanban
+    source: docs/runbooks/flow-claude-connector.md
+
+  - id: capability:flow-customer-documents
+    type: capability
+    label: Flow Customer Documents
+    lifecycle: active
+    owner: kanban
+    source: docs/product/flow-customer-documents-sprints.md
+    metadata:
+      description: Versioned attachments on the Flow customer record; CPF/CNPJ mandatory.
+
+  - id: capability:flow-customer-validation
+    type: capability
+    label: Flow Customer Validation (Claude routine)
+    lifecycle: active
+    owner: kanban
+    source: docs/product/flow-customer-documents-sprints.md
+    metadata:
+      description: Button-triggered claude_routine validation on the office Claude account (main account as fallback), answered only by office responsibles, confirmed by flow:validation:approve (ADR 018).
+
+  - id: capability:flow-automation-customer-access
+    type: capability
+    label: Flow automation reads the card customer
+    lifecycle: active
+    owner: kanban
+    source: docs/architecture/decisions/018-flow-validation-by-office-claude-account.md
+    metadata:
+      description: Connector tools for column automation routines to read the card customer, approved validation and validated document pages.
+
+  - id: capability:flow-office-service-contract
+    type: capability
+    label: Flow office service contract template
+    lifecycle: active
+    owner: kanban
+    source: docs/product/flow-office-service-contract-sprints.md
+    metadata:
+      description: Per-office versioned service contract template edited in Quill; free [[TAG]] placeholders filled later by the AI extraction.
+
+  - id: capability:flow-email-automation-outbox
+    type: capability
+    label: Flow e-mail automation outbox
+    lifecycle: active
+    owner: kanban
+    source: docs/runbooks/flow-email-automations.md
+    metadata:
+      description: Durable PostgreSQL outbox for column automation e-mails; BullMQ/Valkey only delivers ids; DB-owned retry, terminal failure and manual retry.
+
+  - id: capability:flow-initial-petitions
+    type: capability
+    label: Flow initial petitions (Claude routine)
+    lifecycle: active
+    owner: kanban
+    source: docs/product/flow-initial-petitions-sprints.md
+    metadata:
+      description: Column automation with expected result initial_petitions; routine drafts JEC/JEF consignado petitions, Flow assembles the .docx (or receives it from the routine) and holds them for lawyer approval (ADR 020).
+
+edges:
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-ai-completion-movement
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: contains
+    source: project:svc-jboot-ai-gateway
+    target: capability:ai-automation-completion-signal
+    owner: ai-gateway
+    evidence: implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+
+  - type: depends_on
+    source: capability:flow-ai-completion-movement
+    target: capability:ai-automation-completion-signal
+    owner: kanban
+    evidence: docs/product/flow-ai-completion-sprints.md
+
+  - type: consumes
+    source: module:app-jboot-next-platform/kanban
+    target: capability:flow-ai-completion-movement
+    owner: kanban
+    evidence: implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: planned_in
+    source: capability:flow-ai-completion-movement
+    target: sprint:flow-ai-completion-sprints/sprint-1
+    owner: kanban
+    evidence: docs/product/flow-ai-completion-sprints.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-card-actions
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+  - type: consumes
+    source: module:app-jboot-next-platform/kanban
+    target: capability:flow-card-actions
+    owner: kanban
+    evidence: implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+  - type: planned_in
+    source: capability:flow-card-actions
+    target: sprint:flow-card-actions-sprints/sprint-1
+    owner: kanban
+    evidence: docs/product/flow-card-actions-sprints.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-petition-monitoring
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: consumes
+    source: module:app-jboot-next-platform/kanban
+    target: capability:flow-petition-monitoring
+    owner: kanban
+    evidence: implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: depends_on
+    source: capability:flow-petition-monitoring
+    target: capability:flow-card-actions
+    owner: kanban
+    evidence: docs/product/flow-card-actions-sprints.md
+
+  - type: depends_on
+    source: capability:flow-petition-monitoring
+    target: capability:flow-initial-petitions
+    owner: kanban
+    evidence: docs/product/flow-card-actions-sprints.md
+
+  - type: depends_on
+    source: capability:flow-petition-monitoring
+    target: integration:juridico-flow
+    owner: kanban
+    evidence: docs/product/flow-card-actions-sprints.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-process-import
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: consumes
+    source: module:app-jboot-next-platform/kanban
+    target: capability:flow-process-import
+    owner: kanban
+    evidence: implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: depends_on
+    source: capability:flow-process-import
+    target: capability:flow-petition-monitoring
+    owner: kanban
+    evidence: docs/product/flow-process-import-sprints.md
+
+  - type: depends_on
+    source: capability:flow-process-import
+    target: integration:juridico-flow
+    owner: kanban
+    evidence: docs/product/flow-process-import-sprints.md
+
+  - type: planned_in
+    source: capability:flow-process-import
+    target: sprint:flow-process-import-sprints/sprint-1-importacao-ponta-a-ponta
+    owner: kanban
+    evidence: docs/product/flow-process-import-sprints.md
+
+  - type: planned_in
+    source: capability:flow-petition-monitoring
+    target: sprint:flow-card-actions-sprints/sprint-2-monitorar-peticao-protocolada
+    owner: kanban
+    evidence: docs/product/flow-card-actions-sprints.md
+
+  - type: contains
+    source: repository:jboot
+    target: capability:ai-first-engineering-harness
+    owner: ai-architecture
+    evidence: docs/ai-architecture.md
+
+  - type: contains
+    source: capability:ai-first-engineering-harness
+    target: capability:architecture-graph
+    owner: ai-architecture
+    evidence: docs/ai-governance/records/decisions/2026-10-06-architecture-graph-engineering.md
+
+  - type: exposes
+    source: capability:architecture-graph
+    target: tool:architecture-graph-viewer
+    owner: ai-architecture
+    evidence: docs/product/api-graph-sprints.md
+
+  - type: governed_by
+    source: capability:architecture-graph
+    target: agent:docs/agents/orchestration/ai-graph-architect
+    owner: ai-architecture
+    evidence: docs/agents/orchestration/ai-graph-architect.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-claude-connector
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: contains
+    source: project:bff-jboot-identity
+    target: capability:identity-oauth-authorization-server
+    owner: identity
+    evidence: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+
+  - type: depends_on
+    source: capability:flow-claude-connector
+    target: capability:identity-oauth-authorization-server
+    owner: kanban
+    evidence: docs/product/kanban-claude-connector-sprints.md
+
+  - type: consumes
+    source: external_system:anthropic-claude
+    target: capability:flow-claude-connector
+    owner: kanban
+    evidence: docs/api/kanban-claude-connector-openapi.yaml
+
+  - type: integrates_with
+    source: capability:identity-oauth-authorization-server
+    target: external_system:anthropic-claude
+    owner: identity
+    evidence: docs/runbooks/flow-claude-connector.md
+
+  - type: contains
+    source: project:svc-jboot-ai-gateway
+    target: capability:claude-routine-dispatch
+    owner: ai-gateway
+    evidence: implementations/svc-jboot-ai-gateway/PROJECT_CONTRACT.md
+
+  - type: calls
+    source: capability:claude-routine-dispatch
+    target: external_system:anthropic-claude
+    owner: ai-gateway
+    evidence: implementations/svc-jboot-ai-gateway/src/ai/providers/claude-routine-fire.adapter.ts
+
+  - type: depends_on
+    source: module:bff-jboot-platform/kanban
+    target: capability:claude-routine-dispatch
+    owner: kanban
+    evidence: docs/product/kanban-sprints.md
+
+  - type: evidenced_by
+    source: capability:flow-claude-connector
+    target: evidence:2026-10-16-flow-claude-connector-routine
+    owner: kanban
+    evidence: docs/ai-governance/attestations/2026-10-16-flow-claude-connector-routine.yaml
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-customer-documents
+    owner: kanban
+    evidence: docs/architecture/decisions/017-flow-customer-documents-validation-drive.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-customer-validation
+    owner: kanban
+    evidence: docs/architecture/decisions/017-flow-customer-documents-validation-drive.md
+
+  - type: consumes
+    source: capability:flow-customer-validation
+    target: capability:flow-customer-documents
+    owner: kanban
+    evidence: docs/product/flow-customer-documents-sprints.md
+
+  - type: depends_on
+    source: capability:flow-customer-validation
+    target: capability:flow-claude-connector
+    owner: kanban
+    evidence: docs/product/flow-customer-documents-sprints.md
+
+  - type: depends_on
+    source: capability:flow-customer-validation
+    target: capability:claude-routine-dispatch
+    owner: kanban
+    evidence: docs/product/flow-customer-documents-sprints.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-automation-customer-access
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: consumes
+    source: capability:flow-automation-customer-access
+    target: capability:flow-customer-validation
+    owner: kanban
+    evidence: docs/architecture/decisions/018-flow-validation-by-office-claude-account.md
+
+  - type: depends_on
+    source: capability:flow-automation-customer-access
+    target: capability:flow-claude-connector
+    owner: kanban
+    evidence: docs/runbooks/flow-claude-connector.md
+
+  - type: evidenced_by
+    source: capability:flow-automation-customer-access
+    target: evidence:2026-10-21-flow-office-validation
+    owner: kanban
+    evidence: docs/ai-governance/attestations/2026-10-21-flow-office-validation.yaml
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-office-service-contract
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-email-automation-outbox
+    owner: kanban
+    evidence: implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+
+  - type: consumes
+    source: capability:flow-customer-validation
+    target: capability:flow-office-service-contract
+    owner: kanban
+    evidence: docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+
+  - type: evidenced_by
+    source: capability:flow-office-service-contract
+    target: evidence:2026-10-21-flow-office-service-contract
+    owner: kanban
+    evidence: docs/ai-governance/attestations/2026-10-21-flow-office-service-contract.yaml
+
+  - type: evidenced_by
+    source: capability:flow-email-automation-outbox
+    target: evidence:2026-10-17-flow-email-automation-outbox
+    owner: kanban
+    evidence: docs/ai-governance/attestations/2026-10-17-flow-email-automation-outbox.yaml
+
+  - type: contains
+    source: module:bff-jboot-platform/kanban
+    target: capability:flow-initial-petitions
+    owner: kanban
+    evidence: docs/architecture/decisions/020-flow-initial-petitions-generator.md
+
+  - type: consumes
+    source: capability:flow-initial-petitions
+    target: capability:flow-automation-customer-access
+    owner: kanban
+    evidence: docs/product/flow-initial-petitions-sprints.md
+
+  - type: depends_on
+    source: capability:flow-initial-petitions
+    target: capability:flow-claude-connector
+    owner: kanban
+    evidence: docs/architecture/decisions/020-flow-initial-petitions-generator.md
+
+  - type: implements
+    source: module:bff-jboot-platform/domain-integrations
+    target: integration:juridico-flow
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    evidence: implementations/bff-jboot-platform/modules/domain-integrations/MODULE_CONTRACT.md
+
+  - type: integrates_with
+    source: integration:juridico-flow
+    target: module:bff-jboot-platform/juridico
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    evidence: docs/product/domain-integrations-hardening-sprints.md
+
+  - type: integrates_with
+    source: integration:juridico-flow
+    target: module:bff-jboot-platform/kanban
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    evidence: docs/product/domain-integrations-hardening-sprints.md
+
+  - type: depends_on
+    source: integration:juridico-flow
+    target: service:bff-jboot-identity
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    evidence: docs/ai-governance/records/decisions/2026-10-06-domain-integrations-priority.md
+
+  - type: depends_on
+    source: integration:juridico-flow
+    target: project:wrk-jboot-juridico
+    owner: module-contract:bff-jboot-platform/domain-integrations
+    evidence: docs/product/juridico-datajud-flow-sprints.md
+
+  - type: planned_in
+    source: integration:juridico-flow
+    target: sprint:domain-integrations-hardening-sprints/sprint-h1-verdade-arquitetural-e-contratual
+    owner: product-engineering
+    evidence: docs/product/domain-integrations-hardening-sprints.md
+
+  - type: governed_by
+    source: integration:juridico-flow
+    target: agent:docs/agents/orchestration/ai-graph-architect
+    owner: ai-architecture
+    evidence: docs/agents/orchestration/ai-graph-architect.md
+
+  - type: contains
+    source: module:bff-jboot-platform/process-monitoring
+    target: capability:process-monitoring
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: implementations/bff-jboot-platform/modules/process-monitoring/MODULE_CONTRACT.md
+  - type: consumes
+    source: module:bff-jboot-platform/juridico
+    target: capability:process-monitoring
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/021-process-monitoring-capability.md
+  - type: consumes
+    source: module:bff-jboot-platform/domain-integrations
+    target: capability:process-monitoring
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/021-process-monitoring-capability.md
+  - type: contains
+    source: module:bff-jboot-platform/process-monitoring
+    target: capability:process-publications
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/022-process-publications-capability.md
+  - type: depends_on
+    source: capability:process-publications
+    target: capability:process-monitoring
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/022-process-publications-capability.md
+  - type: integrates_with
+    source: capability:process-publications
+    target: external_system:djen
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/022-process-publications-capability.md
+  - type: consumes
+    source: module:bff-jboot-platform/domain-integrations
+    target: capability:process-publications
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/022-process-publications-capability.md
+  - type: depends_on
+    source: capability:process-monitoring
+    target: project:wrk-jboot-juridico
+    owner: module-contract:bff-jboot-platform/process-monitoring
+    evidence: docs/architecture/decisions/021-process-monitoring-capability.md

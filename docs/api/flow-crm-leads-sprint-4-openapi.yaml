@@ -1,0 +1,345 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 4 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 4 de docs/product/flow-crm-leads-sprints.md
+    (envio completo do lead, fila do gestor, devolucao com motivo e estado do
+    lead; ADR 014, Decisao 3). Estende flow-crm-leads-sprint-1/2/3/3-5-openapi.yaml
+    e kanban-sprint-*-openapi.yaml: rotas novas de lead, campo aditivo
+    `leadStatus` no card, `leadIntakeEnabled` no quadro, erro `lead_frozen` nas
+    mutacoes congeladas e kinds novos de notificacao. Quadro com a captacao
+    desligada (default) e card sem envio nao mudam de comportamento.
+  x-implementation-status: >
+    Implementado em 2026-10-12 em
+    implementations/bff-jboot-platform/src/modules/kanban/leads/ (migration
+    docker/postgres/init/064_kanban_lead_intake.sql).
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: Leads
+  - name: LeadQueue
+  - name: LeadSettings
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  lead_state: >
+    Campo proprio (`kanban_card_leads.status`), independente da coluna; sem linha
+    = `rascunho`. Enum: rascunho, enviado, em_processamento, aguardando_revisao,
+    aprovado, devolvido, falha_processamento. Transicoes da S4: submit
+    (rascunho|devolvido -> enviado) e return (enviado|aguardando_revisao|
+    falha_processamento -> devolvido). `enviado -> aguardando_revisao` (PE14) e da
+    S6; `em_processamento`/`falha_processamento` sao da S7.
+  card_visibility: >
+    Toda rota com `{cardId}` passa por `requireVisibleCard` (404 `Card not found`
+    para card invisivel); fila e `leadStatus` do quadro usam `visibleCardScope`.
+  freeze: >
+    Lead fora de `rascunho`/`devolvido` (P21, PE10): 409 `lead_frozen` (com
+    `leadStatus`) para qualquer usuario em PATCH card, DELETE card, PUT/PATCH
+    customer do card e POST documento do checklist. Revisao de documento,
+    mover, comentar, anexo do historico, tags, status, responsaveis e
+    transferencia de escritorio continuam.
+  personal_data: >
+    Evento (`card.lead_submitted`, `card.lead_returned`), auditoria e notificacao
+    so com ids, estado e o motivo digitado pelo admin. O snapshot do cadastro
+    fica no banco do tenant e nunca e devolvido; a API so expoe nomes de campo
+    alterados.
+  s7_coupling: >
+    O ato de envio (transacao de `LeadsRepository.submit`) e o ponto onde a S7
+    cria a execucao da analise (outbox `kanban_lead_analysis_runs`, ADR 014).
+    Nada disso existe na S4.
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/lead:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    get:
+      tags: [Leads]
+      summary: Estado do lead, o que falta para enviar, ciclos e motivo da devolucao (leitor do card visivel)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardLead' }
+        '403': { description: '`board_membership_required`' }
+        '404': { description: 'Card not found (inexistente ou invisivel)' }
+  /kanban/boards/{boardId}/cards/{cardId}/lead/submit:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    post:
+      tags: [Leads]
+      summary: Enviar para analise (flow:write; board_admin/board_member; coluna editavel)
+      description: >
+        Exige captacao ligada no quadro, cliente vinculado, campos obrigatorios
+        do tenant preenchidos e todo documento obrigatorio ativo com envio mais
+        recente `enviado` ou `aceito` (P13). Grava ciclo com autor, data e
+        snapshot, muda o estado para `enviado`, registra `card.lead_submitted` e
+        notifica os administradores (in-app). Falha nao altera nada.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardLead' }
+        '403': { description: '`Insufficient scope` | `Insufficient board role` | `column_not_editable`' }
+        '404': { description: 'Card not found' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeadStateError' }
+          description: '`lead_not_submittable` (lead ja enviado)'
+        '422':
+          description: '`lead_intake_disabled` ou `lead_incomplete`'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LeadIncompleteError'
+                  - $ref: '#/components/schemas/Error'
+  /kanban/boards/{boardId}/cards/{cardId}/lead/return:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    post:
+      tags: [Leads]
+      summary: Devolver o lead ao escritorio com motivo (flow:admin)
+      description: >
+        Muda para `devolvido` (editavel), grava autor/data/motivo no ciclo atual,
+        registra `card.lead_returned` e notifica criador, responsaveis e quem
+        enviou, somente os que veem o card.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReturnLead' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardLead' }
+        '400': { description: 'motivo fora de 10..500 caracteres apos trim' }
+        '403': { description: '`lead_admin_required` | `Insufficient scope` | `board_membership_required` (chave desligada, admin nao membro)' }
+        '404': { description: 'Card not found' }
+        '409':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeadStateError' }
+          description: '`lead_not_returnable`'
+  /kanban/leads:
+    get:
+      tags: [LeadQueue]
+      summary: Fila do gestor (flow:admin), paginada
+      description: >
+        Leads com ciclo de envio do tenant, somente cards visiveis (com a chave de
+        escritorio desligada, so quadros em que o admin e membro). Ordem: envio
+        atual mais recente primeiro.
+      parameters:
+        - { name: officeId, in: query, schema: { type: string, format: uuid }, description: escritorio ATUAL do card }
+        - { name: boardId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/LeadStatus' } }
+        - { name: submittedFrom, in: query, schema: { type: string, format: date } }
+        - { name: submittedTo, in: query, schema: { type: string, format: date }, description: inclusivo }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/LeadQueueItem' } }
+                  meta:
+                    type: object
+                    properties:
+                      limit: { type: integer }
+                      offset: { type: integer }
+                      total: { type: integer }
+        '403': { description: '`lead_admin_required` | `Insufficient scope`' }
+  /kanban/lead-settings:
+    get:
+      tags: [LeadSettings]
+      summary: Campos cadastrais obrigatorios para o envio (flow:admin)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeadSettings' }
+        '403': { description: '`lead_admin_required` | `Insufficient scope`' }
+    put:
+      tags: [LeadSettings]
+      summary: Substitui os campos obrigatorios do envio (flow:admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requiredFields]
+              properties:
+                requiredFields:
+                  type: array
+                  maxItems: 40
+                  uniqueItems: true
+                  items: { $ref: '#/components/schemas/LeadFieldKey' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeadSettings' }
+        '403': { description: '`lead_admin_required` | `Insufficient scope`' }
+        '422':
+          description: '`invalid_lead_fields` com `invalidFields`'
+  /kanban/boards/{boardId}:
+    patch:
+      tags: [LeadSettings]
+      summary: (aditivo) `leadIntakeEnabled` liga/desliga a captacao no quadro (flow:admin + board_admin efetivo)
+      parameters:
+        - $ref: '#/components/parameters/BoardId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                leadIntakeEnabled: { type: boolean }
+      responses:
+        '200': { description: 'Quadro com `leadIntakeEnabled`' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    BoardId: { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+    CardId: { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    LeadStatus:
+      type: string
+      enum: [rascunho, enviado, em_processamento, aguardando_revisao, aprovado, devolvido, falha_processamento]
+    LeadFieldKey:
+      type: string
+      description: >
+        Whitelist de `leads/lead-fields.ts`: name, email, phone, addressZip,
+        addressStreet, addressNumber, addressComplement, addressNeighborhood,
+        addressCity, addressState e juridico.{dataNascimento, nacionalidade,
+        estadoCivil, profissao, rgNumero, rgOrgaoEmissor, rgUf, nomeMae,
+        numeroBeneficio, especieBeneficio, bancoPagamento}. CPF nao e
+        configuravel (sempre presente no cliente vinculado). Default P16: name,
+        juridico.dataNascimento, addressZip, addressStreet, addressNumber,
+        addressCity, addressState.
+    PendingDocument:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        state: { type: string, enum: [pendente, rejeitado] }
+    LeadReadiness:
+      type: object
+      properties:
+        complete: { type: boolean }
+        customerLinked: { type: boolean }
+        missingFields: { type: array, items: { $ref: '#/components/schemas/LeadFieldKey' } }
+        pendingDocumentTypes: { type: array, items: { $ref: '#/components/schemas/PendingDocument' } }
+    LeadSubmission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        officeId: { type: [string, 'null'], format: uuid, description: escritorio do card no envio }
+        submittedByIdentityId: { type: string, format: uuid }
+        submittedByName: { type: [string, 'null'] }
+        submittedAt: { type: string, format: date-time }
+        returnedByIdentityId: { type: [string, 'null'], format: uuid }
+        returnedByName: { type: [string, 'null'] }
+        returnedAt: { type: [string, 'null'], format: date-time }
+        returnReason: { type: [string, 'null'] }
+    CardLead:
+      type: object
+      properties:
+        cardId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/LeadStatus' }
+        leadIntakeEnabled: { type: boolean }
+        editable: { type: boolean, description: 'false = congelado (P21)' }
+        canSubmit: { type: boolean }
+        canReturn: { type: boolean }
+        readiness:
+          oneOf:
+            - $ref: '#/components/schemas/LeadReadiness'
+            - type: 'null'
+          description: so com a captacao ligada e o lead editavel
+        currentSubmission:
+          oneOf:
+            - $ref: '#/components/schemas/LeadSubmission'
+            - type: 'null'
+        customerSnapshot:
+          description: so com o lead congelado e envio atual
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                outdated: { type: boolean }
+                changedFields: { type: array, items: { type: string } }
+                customerChanged: { type: boolean }
+        history: { type: array, maxItems: 20, items: { $ref: '#/components/schemas/LeadSubmission' } }
+    ReturnLead:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 500, description: aparado antes da validacao }
+    LeadQueueItem:
+      type: object
+      properties:
+        cardId: { type: string, format: uuid }
+        boardId: { type: string, format: uuid }
+        boardName: { type: string }
+        cardTitle: { type: string }
+        officeId: { type: [string, 'null'], format: uuid }
+        officeName: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/LeadStatus' }
+        submissionId: { type: [string, 'null'], format: uuid }
+        submittedByIdentityId: { type: [string, 'null'], format: uuid }
+        submittedByName: { type: [string, 'null'] }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        returnedAt: { type: [string, 'null'], format: date-time }
+        returnReason: { type: [string, 'null'] }
+    LeadSettings:
+      type: object
+      properties:
+        requiredFields: { type: array, items: { $ref: '#/components/schemas/LeadFieldKey' } }
+        configured: { type: boolean, description: 'false = default P16' }
+        configuredAt: { type: [string, 'null'], format: date-time }
+        availableFields: { type: array, items: { $ref: '#/components/schemas/LeadFieldKey' } }
+        defaultRequiredFields: { type: array, items: { $ref: '#/components/schemas/LeadFieldKey' } }
+    LeadIncompleteError:
+      type: object
+      properties:
+        code: { const: lead_incomplete }
+        message: { type: string }
+        customerLinked: { type: boolean }
+        missingFields: { type: array, items: { $ref: '#/components/schemas/LeadFieldKey' } }
+        pendingDocumentTypes: { type: array, items: { $ref: '#/components/schemas/PendingDocument' } }
+    LeadStateError:
+      type: object
+      properties:
+        code: { type: string, enum: [lead_not_submittable, lead_not_returnable, lead_frozen] }
+        message: { type: string }
+        leadStatus: { $ref: '#/components/schemas/LeadStatus' }
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+    CardLeadStatusField:
+      description: (aditivo) `GET /kanban/boards/{boardId}/cards` ganha `leadStatus` (LeadStatus ou null sem envio) por card
+      type: object
+      properties:
+        leadStatus:
+          oneOf:
+            - $ref: '#/components/schemas/LeadStatus'
+            - type: 'null'
+    BoardLeadIntakeField:
+      description: (aditivo) `GET /kanban/boards`, `GET/PATCH /kanban/boards/{boardId}` e `POST /kanban/boards` ganham `leadIntakeEnabled`
+      type: object
+      properties:
+        leadIntakeEnabled: { type: boolean }

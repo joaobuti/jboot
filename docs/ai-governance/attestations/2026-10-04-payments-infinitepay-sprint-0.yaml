@@ -1,0 +1,93 @@
+schema_version: "1.0.0"
+execution_id: "20261004-payments-infinitepay-sprint-0-v1"
+date: "2026-10-04"
+mode: architecture
+status: partial
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-payments
+target_module: null
+scope_paths:
+  - docs/architecture/decisions/011-payments-service-go.md
+  - docs/architecture/decisions/012-infinitepay-pilot.md
+  - docs/product/payments-sprints.md
+  - docs/product/payments-sprint-0-gate.md
+  - docs/product/payments-sprint-0-final-review.md
+  - docs/product/infinitepay-checkout-not-enabled.fixture.json
+  - docs/product/infinitepay-checkout-created.fixture.json
+  - docs/product/infinitepay-payment-check-insufficient-identifiers.fixture.json
+  - docs/product/infinitepay-checkout-callback-paid.fixture.json
+  - docs/product/infinitepay-payment-check-paid.fixture.json
+  - docs/ai-governance/records/non-conformities/2026-10-04-confirmed-payments-go-stack-reopened.md
+  - docs/ai-governance/evals/scenarios.yaml
+  - tools/ai/behavioral-evals.py
+  - docs/ai-governance/evidence
+instruction_sources:
+  - AGENTS.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-new-module.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/decision-principles.md
+  - docs/architecture/implementation-lifecycle.md
+instruction_set_sha256: "eeee0dadf5f811454c0b2995c7457487270b20cf0304b49bf6849203191193c8"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Usuario confirmou servico independente em Go, PDV, InfinitePay, BYOA,
+    fluxo direto de fundos e autorizou iniciar a Sprint 0 documental em
+    2026-10-04. Na continuidade da mesma data, confirmou InfinitePay Checkout
+    com Pix como capability da PoC, mantendo InfiniteTap fora desta fase.
+    Tambem confirmou politica administrativa de conexao/revalidacao, termos
+    comerciais por contrato, alvo normal de confirmacao em 2 minutos, RTO de 4
+    horas, RPO zero para pagamentos confirmados, minimizacao de PII e retencao
+    proposta de 5 anos sujeita a revisao juridica/contabil. Declarou tambem que
+    volume, pico, ticket e mix nao sao estimaveis neste momento; a medicao foi
+    registrada como not_collected e nunca como zero. Confirmou o avanco da PoC
+    interna sem faturamento comercial ate a revisao final anterior ao codigo.
+security_review:
+  status: not_applicable
+  evidence:
+    - execucao restrita a arquitetura, roadmap, gate e avaliacoes de governanca
+    - nenhum endpoint, banco, runtime, secret ou codigo funcional foi criado
+    - fixtures externas reais foram anonimizadas e revisadas sem identificadores vivos
+    - security-checklist permanece bloqueante antes da fundacao funcional
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - git diff --check
+  - YAML parse ok
+  - python3 tools/ai/behavioral-evals.py; 24 scenarios passed
+  - python3 -m unittest discover -s tools/ai/tests -p 'test_*.py'; 10 tests passed
+  - make ai-adapters
+  - make ai-context
+  - make ai-evidence
+  - make ai-conformance; conformant
+result: >-
+  Sprint 0 documental atualizada com InfinitePay como provider piloto, BYOA por
+  tenant e Checkout Pix confirmado. Respostas reais de erro, criacao, callback,
+  consulta insuficiente e payment_check positivo foram anonimizadas e tiveram
+  proveniencia registrada. O caminho positivo awaiting_payment para received
+  foi fechado por consulta server-to-server correlacionada, sem atribuir
+  autoridade financeira ao callback. A criacao de
+  Sprint 0 atingiu ready_for_human_confirmation. Polling, timeout e resultados
+  incertos foram definidos conservadoramente; PoC interna nao possui cobranca
+  comercial. implementations/svc-jboot-payments permanece bloqueada apenas ate
+  confirmacao humana final da Sprint 1. Webhook real, hardening do provider,
+  revisao legal, contrato comercial e capacidade medida continuam gates de
+  adapter/producao.

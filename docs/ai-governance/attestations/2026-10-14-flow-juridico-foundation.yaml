@@ -1,0 +1,74 @@
+schema_version: "1.0.0"
+execution_id: "20261014-flow-juridico-foundation-v1"
+date: "2026-10-14"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker-compose.yml
+  - docker/postgres/init
+  - docs/api/flow-juridico-foundation-openapi.yaml
+  - docs/product/sprint-juridico-flow.md
+  - docs/security/flow-drive-ai-threat-model.md
+  - docs/ai-governance/attestations/2026-10-14-flow-juridico-foundation.yaml
+  - docs/ai-governance/evidence
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/skills/tenant-context.md
+  - implementations/bff-jboot-platform/skills/api-contract.md
+instruction_set_sha256: "97e0c761bec226a35bd0043da84b448ff1b892a131c583ae7e8ca972ca8d891c"
+context_sha256:
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "25579610b73a4a332ddf853bc5994f211380c4e1210f749c1435fd959b264a2c"
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "caf7e378f63d593d435a15be4680f0ff6076260e4d084c4094bef30ea8bc75d0"
+agents:
+  - implementations/bff-jboot-platform/agents/backend-node-typescript.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/agents/backend-contract-client.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/skills/tenant-context.md
+  - implementations/bff-jboot-platform/skills/api-contract.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+human_approval:
+  status: approved
+  evidence: O usuario confirmou todas as decisoes de fundacao, incluindo OAuth Drive por tenant, pasta administrada pelo cliente, exclusao espelhada com legal hold e UI existente.
+security_review:
+  status: passed
+  evidence:
+    - queries parametrizadas, scopes e tenant context revisados
+    - segredo OAuth permanece write-only por referencia de runtime
+    - fila contem somente databaseRef, clientId e syncId; caminhos remotos usam UUIDs
+    - URLs Google sao fixas, chamadas possuem timeout e erros/logs usam codigos sanitizados
+    - checksum canonico e chave remota de idempotencia sao revalidados antes da conclusao
+    - nenhuma dependencia foi alterada; achados do audit baseline permanecem no gate global de merge, fora do delta desta execucao
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 553 backend tests; 551 passed and 2 integration tests skipped because Gotenberg was unavailable
+  - backend typecheck, scoped lint and build passed
+  - 95 frontend tests, type-check and build passed; lint zero errors and 181 baseline warnings
+  - API Graph gate and ai-conformance passed
+result: >-
+  Shared Flow customers and their UI are complete. Google Drive configuration,
+  sanitized connection testing, schema, runtime reference, transactional outbox,
+  retry/DLQ, reconciliation relay and idempotent sync worker are implemented;
+  Drive administration UI is implemented with a typed client and write-only credential flow.
+  Remote reconciliation and PII-free operational metrics are implemented.
+  Remote deletion/hold workflow remains blocked on the canonical purge workflow. AI blocks remain
+  blocked by external legal, provider, model and dataset inputs.

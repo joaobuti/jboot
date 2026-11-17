@@ -1,0 +1,4 @@
+*
+!tools/db/migrate.sh
+!docker/postgres/init/*.sql
+!docker/postgres/prod/*.sql

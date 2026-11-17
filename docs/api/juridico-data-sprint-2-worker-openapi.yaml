@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: JBoot Juridico Monitor Worker Callback API
+  version: 2.0.0
+paths:
+  # Desde a Sprint 2 de docs/product/process-monitoring-sprints.md (ADR 021) a execucao dos
+  # acompanhamentos e da capacidade monitoramento-processual:
+  # docs/api/process-monitoring-worker-openapi.yaml. Aqui resta a retencao das consultas manuais.
+  /internal/juridico/datajud/acompanhamentos/purge:
+    post:
+      summary: Purga snapshots de consulta manual vencidos (180 dias) do banco do Juridico
+      security: [{ juridicoWorker: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [databaseRef]
+              properties:
+                databaseRef: { type: string, maxLength: 128 }
+      responses:
+        '201': { description: Purga executada; purged sempre 0, purgedManualSnapshots com o total }
+        '401': { description: JWT S2S ausente ou invalido }
+components:
+  securitySchemes:
+    juridicoWorker:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT service_access; aud=svc:platform-api; caller=juridico-worker

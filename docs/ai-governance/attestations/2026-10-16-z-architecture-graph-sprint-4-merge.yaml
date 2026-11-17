@@ -1,0 +1,71 @@
+schema_version: "1.0.0"
+execution_id: "20261016-architecture-graph-sprint-4-merge"
+date: "2026-10-16"
+mode: governance
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: repository-root
+target_module: none
+scope_paths:
+  - .claude
+  - .codex.d/AGENTS.md
+  - .cursor/rules/jboot-ai-architecture.mdc
+  - .github/copilot-instructions.md
+  - AGENTS.md
+  - Makefile
+  - docs/AI-COMMANDS.md
+  - docs/agents
+  - docs/ai-architecture.md
+  - docs/ai-commands
+  - docs/ai-governance
+  - docs/architecture-graph
+  - docs/product/api-graph-sprints.md
+  - docs/product/kanban-claude-connector-sprints.md
+  - implementations/svc-jboot-juridico-data
+  - tools/ai
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ai-graph-architect.md
+instruction_set_sha256: "f84f335f619565f6d9ecc1ac87c2fc701e6059da7516b36861181b5d63a632af"
+context_sha256:
+  implementations/svc-jboot-juridico-data/AI_CONTEXT.md: "48bae70bbd0e87613550c537bb9b7644e82c1257719bfa64fc4c31b2461149c8"
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ai-graph-architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-16, ao normalizar a main, o usuario escolheu "Mesclar na main"
+    para feat/architecture-graph-sprint-4 (407cf1359, implementada e validada
+    em 2026-10-06 com attestation propria).
+security_review:
+  status: passed
+  evidence:
+    - docs/ai-governance/security/reviews/2026-10-06-architecture-graph-sprint-4.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 23 conflitos resolvidos; regra operacional da Sprint 4 substitui o texto de transicao nos adapters, PE, Architect e comandos
+  - evals - cenarios Go/OpenAPI da main mantidos junto com GRAPH-001..005; implementacoes antigas sem cenario removidas
+  - engine - diretorio de implementations ignorado pelo Git (templates locais) deixa de gerar implementation_without_contract; teste de regressao adicionado (6 testes)
+  - registry - conector Claude, AS OAuth do Identity, disparo de rotina e Anthropic Claude registrados
+  - make ai-architecture-graph-gate - 679 nodes, 972 edges, 0 findings
+  - viewer no container - npm ci, 3 testes, lint, build e npm audit sem vulnerabilidades
+  - make ai-check aprovado (inclui ai-conformance, ai-api-graph-gate e ai-architecture-graph-gate)
+result: >-
+  Architecture Graph Sprint 4 (registry, schema, engine, gate, viewer local,
+  steward ai-graph-architect) integrada a main atual, com a regra de Graph
+  Engineering operacional em todos os adapters e o gate no ai-check. A
+  obrigacao de migracao do conector Claude foi cumprida no registry.

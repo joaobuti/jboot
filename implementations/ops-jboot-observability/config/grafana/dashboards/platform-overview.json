@@ -1,0 +1,119 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "jboot-mimir"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(otelcol_receiver_accepted_spans_total[5m]))",
+          "legendFormat": "spans/s",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Spans recebidos",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "jboot-mimir"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "id": 2,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(otelcol_receiver_accepted_metric_points_total[5m]))",
+          "legendFormat": "pontos/s",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Pontos de métricas recebidos",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "jboot-mimir"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "id": 3,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(rate(otelcol_receiver_accepted_log_records_total[5m]))",
+          "legendFormat": "logs/s",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Logs recebidos",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "jboot-mimir"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 8},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum(increase(otelcol_exporter_send_failed_spans_total[15m])) + sum(increase(otelcol_exporter_send_failed_metric_points_total[15m])) + sum(increase(otelcol_exporter_send_failed_log_records_total[15m]))",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Falhas de exportação — 15 min",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "jboot-loki"},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 8},
+      "id": 5,
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "{service_name=~\".+\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs recentes",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["jboot", "observability", "foundation"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "JBoot Observability — Platform Overview",
+  "uid": "jboot-observability-overview",
+  "version": 1
+}
+

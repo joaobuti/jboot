@@ -1,0 +1,105 @@
+schema_version: "1.0.0"
+execution_id: "20260804-juridico-pje-comunica-v1"
+date: "2026-08-04"
+mode: implementation
+status: success
+runtime: claude-code-vscode
+model: claude-opus-5
+revision: resolved_by_ci
+target_project: implementations/wrk-jboot-juridico
+target_module: portals/pje
+scope_paths:
+  - Makefile
+  - tools/dev-up.sh
+  - .env.example
+  - docker/postgres/init/037_juridico_pje_comunicacoes.sql
+  - docs/sprints/juridico.md
+  - docs/ai-governance
+  - implementations/wrk-jboot-juridico/AI_CONTEXT.md
+  - implementations/wrk-jboot-juridico/PROJECT_CONTRACT.md
+  - implementations/wrk-jboot-juridico/pyproject.toml
+  - implementations/wrk-jboot-juridico/uv.lock
+  - implementations/wrk-jboot-juridico/src/portals/pje
+  - implementations/wrk-jboot-juridico/src/workers/main.py
+  - implementations/wrk-jboot-juridico/tests/test_pje_comunica.py
+  - implementations/bff-jboot-platform/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/modules/juridico/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/modules/juridico/MODULE_CONTRACT.md
+  - implementations/bff-jboot-platform/scripts/seed-pje-dev-credentials.ts
+  - implementations/bff-jboot-platform/src/modules/juridico/pje
+  - implementations/bff-jboot-platform/src/modules/juridico/juridico.module.ts
+  - implementations/app-jboot-next-platform/AI_CONTEXT.md
+  - implementations/app-jboot-next-platform/modules/juridico/AI_CONTEXT.md
+  - implementations/app-jboot-next-platform/modules/juridico/MODULE_CONTRACT.md
+  - implementations/app-jboot-next-platform/src/modules/juridico
+  - implementations/app-jboot-next-platform/src/app/(with-layout)/juridico/pje
+  - implementations/app-jboot-next-platform/src/components/BrowserTitle.tsx
+  - implementations/app-jboot-next-platform/src/layouts/Layouts/LayoutMenuData.tsx
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-commands/jboot-new-module.md
+  - implementations/wrk-jboot-juridico/PROJECT_CONTRACT.md
+  - implementations/bff-jboot-platform/modules/juridico/MODULE_CONTRACT.md
+  - implementations/app-jboot-next-platform/modules/juridico/MODULE_CONTRACT.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+instruction_set_sha256: "248d5bb37b0dba4bce6108fc87452c5df9ae8ebacb98eba45e7554960aa42b42"
+context_sha256:
+  implementations/wrk-jboot-juridico/AI_CONTEXT.md: "c03f918482b57f6f305bba025fbc1b685b3e39ea00619ce1180c6db6f4b9ddb2"
+  implementations/bff-jboot-platform/modules/juridico/AI_CONTEXT.md: "6e20e4ac27dc234a28d6ac2db9b4e38014ffa19eaadafe0e88ef48e9390ac4c0"
+  implementations/app-jboot-next-platform/modules/juridico/AI_CONTEXT.md: "3911add49a82bc8330fdec13d9fa970ef752b7d8cc75db180b7b3575179d51cf"
+agents:
+  - implementations/wrk-jboot-juridico/agents/portal-adapter.md
+  - implementations/wrk-jboot-juridico/agents/scraping-worker.md
+  - docs/agents/orchestration/product-engineer.md
+skills:
+  - implementations/wrk-jboot-juridico/skills/portal-failure-handling.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    usuario respondeu as quatro decisoes de escopo (credencial opcional sem uso na consulta,
+    filtro por OAB+UF, execucao no worker Python, sprint de consulta e persistencia),
+    autorizou a execucao sem OAB pre-configurada e escolheu a estrategia de branch
+external_api:
+  name: Diario de Justica Eletronico Nacional (DJEN) — Comunica PJe
+  base_url: https://comunicaapi.pje.jus.br
+  spec: https://comunicaapi.pje.jus.br/swagger/djen.yml
+  auth_required_for_scope: false
+  verified_findings:
+    - consulta de comunicacoes e publica; nenhum endpoint de leitura declara security
+    - POST /api/v1/login e exclusivo de tribunais (conta SCA/CNJ) e retornou 403 para as credenciais fornecidas
+    - rate limit observado de 20 requisicoes por janela por IP com cabecalhos x-ratelimit-*
+security_review:
+  status: passed
+  evidence:
+    - credenciais de dev fora do repositorio (.env gitignored) e cifradas em repouso com AES-256-GCM
+    - chave derivada por HMAC-SHA256(jwtSecret, clientId), identica ao CryptoService do BFF
+    - todas as queries de leitura filtram por client_id do contexto autenticado
+    - filtros de listagem sao parametrizados; nenhuma interpolacao de valor em SQL
+    - rotas protegidas por JuridicoAuthGuard com scope juridico:read
+    - worker respeita rate limit do CNJ; sem uso de multiplos IPs para contorno
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - uv run pytest (24 testes, inclui 14 novos de PJe)
+  - node --require ts-node/register --test src/modules/juridico/pje/pje.service.spec.ts (11 testes)
+  - npx tsc --noEmit (BFF e app: zero erro nos arquivos PJe)
+  - npx eslint src/modules/juridico (sem achados)
+  - smoke ponta a ponta contra a API real com deduplicacao comprovada e limpeza do banco
+  - fluxo real BFF -> worker -> DJEN com JWT do tenant: 96 comunicacoes para OAB 18312/MS em 7 dias
+  - make ai-conformance
+result: >-
+  Integracao PJe/DJEN entregue na Sprint PJE-1: menu PJE, configuracao de monitoramento por tenant,
+  fila de sincronizacao no worker com controle de rate limit, endpoints no BFF e tela de
+  comunicacoes com detalhe do teor. Correcao de runtime na mesma execucao: o worker juridico (:8020)
+  passou a subir no perfil dev-up, com alvo dedicado make juridico-worker-dev e profile documentado
+  no contrato; sem ele o BFF respondia 503 nas telas de eProc e PJe.

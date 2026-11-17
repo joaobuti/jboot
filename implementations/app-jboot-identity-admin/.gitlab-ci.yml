@@ -1,0 +1,121 @@
+# Pipeline do app-jboot-identity-admin (admin.jboot.com.br na Configr).
+# Tipo de servidor Configr: Node.js.
+#
+# Deploy: rsync por SSH para ~/admin.jboot.com.br/www/ (nao ha repositorio git
+# na Configr; confirmado em 2026-08-05).
+#
+# CONFIRMADO em 2026-08-06: a Configr NAO instala dependencias nem builda a
+# aplicacao sozinha. Testado manualmente por SSH -- `npm install`/`npm ci`
+# terminam com exit 0 mas o pacote `next` (grande, com binarios do SWC) fica
+# incompleto de forma inconsistente nesse servidor compartilhado. Por isso o
+# CI usa Next.js `output: "standalone"` (ver next.config.js): o build gera um
+# pacote autocontido em `.next/standalone/` (com `server.js` e um
+# `node_modules` minimo ja resolvido), que e exatamente o que e enviado pelo
+# rsync -- nao depende de nenhuma instalacao remota.
+#
+# ACAO MANUAL NECESSARIA NA CONFIGR: trocar "Arquivo principal da aplicacao
+# Node" de `app.js` para `server.js` na tela do Website `admin`.
+#
+# RISCO ACEITO em 2026-08-05: o Website de staging (stg-admin.jboot.com.br)
+# ainda nao foi criado na Configr. Os jobs de staging ficam comentados e
+# deploy-production aponta direto para o build, sem validacao previa em
+# staging. Reativar staging assim que o Website stg existir: descomentar
+# os jobs abaixo e devolver o `needs` de deploy-production para
+# ["identity-admin:smoke-staging"].
+#
+# RISCO ACEITO em 2026-08-06: `identity-admin:lint` roda com `allow_failure: true`
+# por causa do backlog legado de 752 violacoes (ver PROJECT_CONTRACT.md, secao
+# "Riscos Conhecidos"). Isso evita que o backlog preexistente bloqueie o
+# pipeline inteiro; novas mudancas nao devem ampliar a contagem de violacoes.
+#
+.identity_admin_rules:
+  rules:
+    - changes:
+        - implementations/app-jboot-identity-admin/**/*
+        - scripts/deploy/**/*
+        - ci/deploy-template.gitlab-ci.yml
+        - implementations/app-jboot-identity-admin/.gitlab-ci.yml
+
+include:
+  - local: ci/deploy-template.gitlab-ci.yml
+
+identity-admin:lint:
+  extends: [.node_install, .identity_admin_rules]
+  stage: verify
+  allow_failure: true
+  variables:
+    SERVICE_DIR: implementations/app-jboot-identity-admin
+  script:
+    - npm run lint
+
+identity-admin:type-check:
+  extends: [.node_install, .identity_admin_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/app-jboot-identity-admin
+  script:
+    - npm run type-check
+
+identity-admin:test:
+  extends: [.node_install, .identity_admin_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/app-jboot-identity-admin
+  script:
+    - npm test
+
+identity-admin:build:
+  extends: [.node_install, .identity_admin_rules]
+  stage: build
+  variables:
+    SERVICE_DIR: implementations/app-jboot-identity-admin
+  script:
+    - npm run build
+    - cp -r public .next/standalone/public
+    - mkdir -p .next/standalone/.next
+    - cp -r .next/static .next/standalone/.next/static
+  artifacts:
+    paths:
+      - implementations/app-jboot-identity-admin/.next/standalone
+    expire_in: 1 day
+
+# identity-admin:deploy-staging:
+#   extends: [.git_push_deploy, .identity_admin_rules]
+#   stage: deploy-staging
+#   needs: ["identity-admin:build"]
+#   environment:
+#     name: staging/identity-admin
+#     url: https://stg-admin.jboot.com.br
+#   variables:
+#     DEPLOY_SOURCE_DIR: implementations/app-jboot-identity-admin
+#     DEPLOY_SSH_TARGET: $IDENTITY_ADMIN_SSH_TARGET_STG
+#     DEPLOY_REMOTE_PATH: admin.jboot.com.br/www
+#
+# identity-admin:smoke-staging:
+#   extends: .identity_admin_rules
+#   stage: smoke-staging
+#   needs: ["identity-admin:deploy-staging"]
+#   image: curlimages/curl:8.11.1
+#   script:
+#     - curl -fsS -o /dev/null -w '%{http_code}\n' https://stg-admin.jboot.com.br/
+
+identity-admin:deploy-production:
+  extends: [.rsync_deploy, .identity_admin_rules]
+  stage: deploy-production
+  needs: ["identity-admin:build"]
+  when: manual
+  environment:
+    name: production/identity-admin
+    url: https://admin.jboot.com.br
+  variables:
+    DEPLOY_SOURCE_DIR: implementations/app-jboot-identity-admin/.next/standalone
+    DEPLOY_SSH_TARGET: $IDENTITY_ADMIN_SSH_TARGET_PROD
+    DEPLOY_REMOTE_PATH: admin.jboot.com.br/www
+
+identity-admin:smoke-production:
+  extends: .identity_admin_rules
+  stage: smoke-production
+  needs: ["identity-admin:deploy-production"]
+  image: curlimages/curl:8.11.1
+  script:
+    - curl -fsS -o /dev/null -w '%{http_code}\n' https://admin.jboot.com.br/

@@ -1,0 +1,53 @@
+schema_version: "1.0.0"
+execution_id: "20261021-platform-badge-subtle"
+date: "2026-10-21"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/app-jboot-next-platform
+target_module: modules/kanban
+scope_paths:
+  - docs/ai-governance/attestations/2026-10-21-platform-badge-subtle.yaml
+  - implementations/app-jboot-next-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+instruction_set_sha256: "ce5fa465242c4903affefbb37bf0832d8b409d1f2824aa2729daf8f8b4327eaf"
+context_sha256:
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "9d6eef8f9a3faac0087232891ffc0787c203e9bb07ca976217037acca1474bd1"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "93738bbc645854bf3ff656044e95994efb1dfdf0e8cd2c098f08618245535bee"
+agents:
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-21 o usuario pediu a correcao dos badges invisiveis (classe
+    badge-soft-* inexistente no Velzon da app) achados no teste da tela de
+    Escritorios e autorizou o commit.
+security_review:
+  status: not_applicable
+  evidence:
+    - Troca so de classes CSS de badges; sem mudanca de dado, permissao ou API.
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - Web no container - type-check, lint, 119 testes e next build
+  - navegador - badges Ativo da lista de escritorios visiveis (antes vazios)
+result: >-
+  71 usos de badge-soft-* trocados por bg-*-subtle text-* em 26 arquivos do
+  Flow e do Juridico na Platform Web; testes de rotulo ajustados ao formato novo.

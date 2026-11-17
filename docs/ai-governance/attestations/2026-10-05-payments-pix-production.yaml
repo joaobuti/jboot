@@ -1,0 +1,98 @@
+schema_version: "1.0.0"
+execution_id: "20261005-payments-pix-production-v1"
+date: "2026-10-05"
+mode: implementation
+status: success
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-payments
+target_module: modules/pdv
+scope_paths:
+  - docs/ai-governance/attestations/2026-10-05-payments-pix-production.yaml
+  - docs/ai-governance/evidence/AI_FIRST_EVIDENCE.md
+  - docs/ai-governance/evidence/ai-first-evidence.json
+  - docs/api/payments-sprint-1-openapi.yaml
+  - docs/product/payments-pix-production-gate.md
+  - docs/product/payments-sprints.md
+  - docs/runbooks/payments-foundation.md
+  - docs/security/payments-pix-production-security-checklist.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+  - implementations/svc-jboot-payments
+instruction_sources:
+  - AGENTS.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-cashier-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-admin-api-client.md
+instruction_set_sha256: "bb84b47ac368c95477916402241a62f65bdaba49d344a5dc5c4e826f33b0c6b0"
+context_sha256:
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "362733a2ab763e0b7fa859bdf562d012c8b78258fc8fe5eab6790b8c333bf80c"
+  implementations/app-jboot-next-platform/modules/pdv/AI_CONTEXT.md: "38ac1802eb46f330495e8edbb9ba7dbb11f338fba163919839c17a9704d1995e"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "c2919e13927577974bbf8cf7bed21f0dac0aea28817de8d55bf7ddacdcbb5425"
+  implementations/bff-jboot-platform/modules/pdv/AI_CONTEXT.md: "79f7a4137f903ed2399b870600ab6e933b5cdc14b5aadd6ee72e62ee0ca71f27"
+  implementations/svc-jboot-payments/AI_CONTEXT.md: "b7bd987b4cdfc3c5f29b35b2fe71377b545a025eec8a4b842ed0428ff2ce004a"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/svc-jboot-payments/agents/payments-service.md
+  - implementations/svc-jboot-payments/agents/payments-integrations.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - docs/skills/external-http-adapter/SKILL.md
+  - implementations/svc-jboot-payments/skills/payments-contracts.md
+  - implementations/svc-jboot-payments/skills/payments-risk-review.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-cashier-ui.md
+  - implementations/app-jboot-next-platform/modules/pdv/skills/pdv-admin-api-client.md
+human_approval:
+  status: approved
+  evidence: >-
+    O usuario determinou prioridade total para finalizar PIX antes de boleto e
+    confirmou todas as estrategias, incluindo webhook-sinal com payment_check
+    como verdade e estorno manual auditado.
+security_review:
+  status: passed
+  evidence:
+    - checklist preenchido em docs/security/payments-pix-production-security-checklist.md
+    - webhook nunca confirma dinheiro; tenant e operador autenticado sao obrigatorios
+    - estorno possui idempotencia e teto transacional
+    - auditorias Go e frontend sem vulnerabilidade critica alcancavel
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - go test -race, vet e build no container
+  - testes de persistencia em PostgreSQL isolado
+  - 202 testes, type-check e build do BFF no container
+  - 22 testes, type-check e build Next 16.3.6 no container
+  - migration 003, health e readiness em runtime real
+  - pg_dump/restore isolado com 3 migrations e 8 tabelas
+  - carga local de 1000 health requests, concorrencia 20, zero falhas
+  - govulncheck e audits de dependencias
+  - make ai-api-graph-gate e make ai-conformance
+result: >-
+  O fluxo PIX ficou fechado do PDV ao servico Go: callback/webhook idempotente
+  apenas sinaliza; o worker confirma exclusivamente por payment_check e expoe
+  pendencias tenant-safe. Estornos manuais possuem workflow auditado no BFF e
+  painel web. Ativacao produtiva depende apenas dos bloqueios externos do gate.

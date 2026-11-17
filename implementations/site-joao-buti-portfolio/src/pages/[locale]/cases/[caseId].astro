@@ -1,0 +1,76 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import LanguageSwitcher from "../../../components/LanguageSwitcher.astro";
+import { architectureGraphSnapshot } from "../../../content/cases.mjs";
+import { casePath, pages, shared } from "../../../content/site-data.mjs";
+
+export function getStaticPaths() {
+  return Object.entries(pages).flatMap(([locale, page]) =>
+    page.cases.items.map((item) => ({
+      params: { locale, caseId: item.id },
+      props: { page, item },
+    }))
+  );
+}
+
+const { page, item } = Astro.props;
+const { locale = "pt" } = Astro.params as { locale: keyof typeof pages };
+const graph = item.id === "jboot" ? architectureGraphSnapshot : undefined;
+const meta = {
+  ...page,
+  path: casePath(locale, item.id),
+  seo: { title: `${item.name} | ${shared.name}`, description: item.summary },
+};
+---
+
+<BaseLayout page={meta} caseId={item.id}>
+  <div class="site-shell">
+    <header class="topbar case-topbar">
+      <a class="brand-mark" href={page.path} aria-label={shared.name}>JB</a>
+      <LanguageSwitcher label={page.labels.languages} locale={locale} caseId={item.id} />
+    </header>
+
+    <main class="section case-detail">
+      <nav aria-label={page.labels.navigation}>
+        <a class="case-link" href={`${page.path}#cases`}><span aria-hidden="true">←</span> {page.labels.allCases}</a>
+      </nav>
+      <article>
+        <header class="case-detail-header">
+          <p class="case-type">{item.type}</p>
+          <h1>{item.name}</h1>
+          <p class="case-lead">{item.summary}</p>
+          {item.stack.length > 0 && (
+            <div class="tag-list">
+              {item.stack.map((tag) => <span>{tag}</span>)}
+            </div>
+          )}
+        </header>
+        {graph && (
+          <section class="case-metrics">
+            <h2>{graph.copy[locale].title}</h2>
+            <p>{graph.copy[locale].description}</p>
+            <dl>
+              {(["nodes", "relationships", "endpoints"] as const).map((key) => (
+                <div>
+                  <dt>{graph.copy[locale][key]}</dt>
+                  <dd>{new Intl.NumberFormat(page.lang).format(graph[key])}</dd>
+                </div>
+              ))}
+            </dl>
+            <time datetime={graph.date}>
+              {new Intl.DateTimeFormat(page.lang, { dateStyle: "long", timeZone: "UTC" }).format(new Date(graph.date))}
+            </time>
+          </section>
+        )}
+        {item.sections.map((section) => (
+          <section>
+            <h2>{section.title}</h2>
+            <p>{section.body}</p>
+          </section>
+        ))}
+        {item.id === "jboot" && <a class="case-link" href="https://jboot.com.br/">JBoot <span aria-hidden="true">↗</span></a>}
+        {item.id === "fpfa" && <a class="case-link" href="https://www.fpfa.com.br/">FPFA <span aria-hidden="true">↗</span></a>}
+      </article>
+    </main>
+  </div>
+</BaseLayout>

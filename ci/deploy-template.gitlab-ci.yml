@@ -1,0 +1,50 @@
+# Templates reutilizados pelos .gitlab-ci.yml de cada servico em implementations/*.
+#
+# Mecanismo de deploy (confirmado em 2026-08-05, substitui a suposicao anterior
+# de "git push deploy"): a Configr NAO hospeda repositorio git por Website.
+# Cada Website tem um usuario SSH proprio e uma pasta fixa "~/<subdominio>/www/";
+# o deploy e rsync direto por SSH para essa pasta (.rsync_deploy), e a Configr
+# reinicia o processo sozinha ao detectar mudanca de arquivos (confirmado pelo
+# usuario). O antigo .git_push_deploy fica mantido abaixo apenas por
+# compatibilidade ate os demais servicos migrarem; nao usar para novos servicos.
+#
+# Imagem fixada em node:22.11.0 (teto de versao Node.js da Configr, confirmado
+# pelo usuario) para o CI validar build/lint/test na mesma versao que roda em
+# producao/staging. O container de dev do monorepo (.docker/jboot/Dockerfile)
+# ainda usa node:24-bookworm; ha um skew de versao entre dev e Configr que fica
+# registrado aqui como risco aceito (nenhum engines.node do stack exige mais
+# que 20.x, entao o skew nao deve causar quebra, mas nao foi eliminado).
+
+.node_install:
+  image: node:22.11.0-bookworm
+  cache:
+    key:
+      files:
+        - $SERVICE_DIR/package-lock.json
+    paths:
+      - $SERVICE_DIR/node_modules
+  before_script:
+    - cd "$SERVICE_DIR"
+    - npm ci
+
+.rsync_deploy:
+  image: node:22.11.0-bookworm
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-client rsync >/dev/null
+    - eval "$(ssh-agent -s)"
+    - echo "$CONFIGR_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p -m 700 ~/.ssh
+    - echo "$CONFIGR_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+  script:
+    - bash scripts/deploy/rsync-deploy.sh "$DEPLOY_SOURCE_DIR" "$DEPLOY_SSH_TARGET" "$DEPLOY_REMOTE_PATH"
+
+.git_push_deploy:
+  image: node:22.11.0-bookworm
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends openssh-client rsync git >/dev/null
+    - eval "$(ssh-agent -s)"
+    - echo "$CONFIGR_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p -m 700 ~/.ssh
+    - echo "$CONFIGR_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+  script:
+    - bash scripts/deploy/git-push-deploy.sh "$DEPLOY_SOURCE_DIR" "$DEPLOY_REMOTE_URL" "${DEPLOY_BRANCH:-main}"

@@ -1,0 +1,117 @@
+# Pipeline do bff-jboot-identity (auth.jboot.com.br na Configr).
+# Tipo de servidor Configr: Node.js.
+#
+# Deploy: rsync por SSH para ~/auth.jboot.com.br/www/ (nao ha repositorio git
+# na Configr; confirmado em 2026-08-05).
+#
+# CONFIRMADO em 2026-08-06: a Configr NAO instala dependencias nem builda a
+# aplicacao sozinha. Testado manualmente por SSH no Website irmao (admin):
+# `npm install`/`npm ci` terminam com exit 0 mas pacotes grandes ficam
+# incompletos de forma inconsistente nesse servidor compartilhado. Por isso
+# o job de build roda `npm run build` + `npm prune --omit=dev` e sobe
+# `dist/` e `node_modules` (so producao) como artifacts; o deploy envia
+# esse pacote pronto (mais `package.json` do proprio checkout), sem exigir
+# nenhuma instalacao remota.
+#
+# ACAO MANUAL NECESSARIA NA CONFIGR: trocar "Arquivo principal da aplicacao
+# Node" de `app.js` para `dist/main.js` na tela do Website `auth`.
+#
+# Variaveis de runtime do NestJS (DATABASE_URL, JWT secrets, etc.) sao
+# configuradas do lado da Configr por ambiente, nao neste pipeline.
+#
+# RISCO ACEITO em 2026-08-05: o Website de staging (stg-auth.jboot.com.br)
+# ainda nao foi criado na Configr. Os jobs de staging ficam comentados e
+# deploy-production aponta direto para o build, sem validacao previa em
+# staging. Reativar staging assim que o Website stg existir: descomentar
+# os jobs abaixo e devolver o `needs` de deploy-production para
+# ["identity-api:smoke-staging"].
+
+.identity_api_rules:
+  rules:
+    - changes:
+        - implementations/bff-jboot-identity/**/*
+        - scripts/deploy/**/*
+        - ci/deploy-template.gitlab-ci.yml
+        - implementations/bff-jboot-identity/.gitlab-ci.yml
+
+include:
+  - local: ci/deploy-template.gitlab-ci.yml
+
+identity-api:lint:
+  extends: [.node_install, .identity_api_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/bff-jboot-identity
+  script:
+    - npm run lint
+
+identity-api:type-check:
+  extends: [.node_install, .identity_api_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/bff-jboot-identity
+  script:
+    - npm run typecheck
+
+identity-api:test:
+  extends: [.node_install, .identity_api_rules]
+  stage: verify
+  variables:
+    SERVICE_DIR: implementations/bff-jboot-identity
+  script:
+    - npm test
+
+identity-api:build:
+  extends: [.node_install, .identity_api_rules]
+  stage: build
+  variables:
+    SERVICE_DIR: implementations/bff-jboot-identity
+  script:
+    - npm run build
+    - npm prune --omit=dev
+  artifacts:
+    paths:
+      - implementations/bff-jboot-identity/dist
+      - implementations/bff-jboot-identity/node_modules
+    expire_in: 1 day
+
+# identity-api:deploy-staging:
+#   extends: [.git_push_deploy, .identity_api_rules]
+#   stage: deploy-staging
+#   needs: ["identity-api:build"]
+#   environment:
+#     name: staging/identity-api
+#     url: https://stg-auth.jboot.com.br
+#   variables:
+#     DEPLOY_SOURCE_DIR: implementations/bff-jboot-identity
+#     DEPLOY_SSH_TARGET: $IDENTITY_API_SSH_TARGET_STG
+#     DEPLOY_REMOTE_PATH: auth.jboot.com.br/www
+#
+# identity-api:smoke-staging:
+#   extends: .identity_api_rules
+#   stage: smoke-staging
+#   needs: ["identity-api:deploy-staging"]
+#   image: curlimages/curl:8.11.1
+#   script:
+#     - curl -fsS https://stg-auth.jboot.com.br/health
+
+identity-api:deploy-production:
+  extends: [.rsync_deploy, .identity_api_rules]
+  stage: deploy-production
+  needs: ["identity-api:build"]
+  when: manual
+  environment:
+    name: production/identity-api
+    url: https://auth.jboot.com.br
+  variables:
+    DEPLOY_SOURCE_DIR: implementations/bff-jboot-identity
+    DEPLOY_SSH_TARGET: $IDENTITY_API_SSH_TARGET_PROD
+    DEPLOY_REMOTE_PATH: auth.jboot.com.br/www
+
+identity-api:smoke-production:
+  extends: .identity_api_rules
+  stage: smoke-production
+  needs: ["identity-api:deploy-production"]
+  image: curlimages/curl:8.11.1
+  script:
+    - curl -fsS https://auth.jboot.com.br/health

@@ -1,0 +1,81 @@
+schema_version: "1.0.0"
+execution_id: "20260917-tooling-ai-api-graph-sprint-3"
+date: "2026-09-17"
+mode: governance
+status: success
+runtime: claude-code-vscode
+model: claude-opus-5
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+# Cobre o diff inteiro da branch (Sprints 1 a 3): o gate de MR avalia uma unica attestation,
+# a ultima em ordem alfabetica entre as presentes no diff.
+scope_paths:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - .codex.d/AGENTS.md
+  - .cursor/rules/jboot-ai-architecture.mdc
+  - .github/copilot-instructions.md
+  - Makefile
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/ai-commands/jboot-plan-feature.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/ai-governance/README.md
+  - docs/ai-governance/evals/scenarios.yaml
+  - docs/ai-governance/records/decisions/README.md
+  - docs/ai-governance/records/decisions/2026-09-17-api-contract-graph.md
+  - docs/ai-governance/attestations/2026-09-17-tooling-ai-api-graph-sprint-1.yaml
+  - docs/ai-governance/attestations/2026-09-17-tooling-ai-api-graph-sprint-2.yaml
+  - docs/ai-governance/attestations/2026-09-17-tooling-ai-api-graph-sprint-3.yaml
+  - docs/product/api-graph-sprints.md
+  - tools/ai/api-graph.py
+  - tools/ai/api-graph.yaml
+  - tools/ai/api-graph-accepted.yaml
+  - tools/ai/behavioral-evals.py
+  - tools/ai/tests/test_api_graph.py
+instruction_sources:
+  - AGENTS.md
+  - docs/ai-governance/attestations/README.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/AI-COMMANDS.md
+  - docs/ai-commands/jboot-implement-feature.md
+  - docs/ai-commands/jboot-plan-feature.md
+instruction_set_sha256: "abd9c5c3ec8d3e78889b663227221d63cc98242266a2b5712e956d1913966eb8"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    usuario autorizou avancar para a Sprint 3 (consumo do grafo por agents) apos a entrega da Sprint 2;
+    a forma sob demanda segue a decisao ja aprovada de CLI deterministico em vez de MCP
+security_review:
+  status: passed
+  evidence:
+    - recorte le apenas o grafo construido das raizes declaradas e o tamanho dos arquivos citados; nenhum .env lido
+    - saida somente em stdout, sem escrita no repositorio e sem chamadas de rede
+    - sem dependencia nova e sem tool MCP; capacidade T1 na tool-approval-matrix
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - python3 -m unittest tools/ai/tests/test_api_graph.py
+  - python3 tools/ai/behavioral-evals.py
+  - make ai-api-context MODULE=kanban
+  - make ai-check (worktree limpo em HEAD com as mudancas da branch)
+result: >-
+  Recorte de superficie HTTP por modulo ou servico gerado sob demanda (make ai-api-context), com rotas,
+  DTOs, consumidores, arestas entre modulos e achados, 5 a 30 vezes menor que os arquivos citados
+  (estimativa chars/4, limite inferior, sem medicao de tokens). Regra incorporada ao AGENTS.md, aos
+  quatro adapters, ao /jboot-implement-feature, ao /jboot-plan-feature, ao catalogo de comandos e ao
+  preflight do PE, com evals positivo e negativo verificados por mutacao.

@@ -1,0 +1,33 @@
+name: AI Governance
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ai-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install AI governance validator dependencies
+        run: python3 -m pip install --disable-pip-version-check -r tools/ai/requirements.txt
+
+      - name: Run AI governance checks
+        run: make ai-check
+
+      - name: Validate diff attestation
+        if: github.event_name == 'pull_request'
+        run: python3 tools/ai/diff-preflight.py --base "${{ github.event.pull_request.base.sha }}"
+
+      - name: Generate revision-bound evidence
+        run: make ai-evidence
+
+      - name: Upload AI-first evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-first-evidence-${{ github.sha }}
+          path: docs/ai-governance/evidence/

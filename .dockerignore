@@ -1,0 +1,14 @@
+.git/
+.env
+.env.*
+!.env.example
+node_modules/
+vendor/
+.venv/
+venv/
+dist/
+build/
+storage/
+tmp/
+logs/
+

@@ -1,0 +1,349 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 2 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 2 de docs/product/flow-crm-leads-sprints.md:
+    checklist de documentos por quadro, envio de documento pelo fluxo de anexos
+    (CardActivity + CardAttachment) e revisao pela central. Estende os contratos
+    docs/api/kanban-sprint-*-openapi.yaml e flow-crm-leads-sprint-1-openapi.yaml;
+    so redefine o que muda em rotas existentes (campos aditivos e erro 422).
+  x-implementation-status: >
+    Implementado em 2026-10-10 em
+    implementations/bff-jboot-platform/src/modules/kanban/documents/.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: DocumentTypes
+  - name: CardDocuments
+  - name: ChecklistGate
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  storage: >
+    Mesmo bucket e mesma chave server-side dos anexos da Sprint 4 do kanban
+    ({client_id}/{card_id}/{activity_id}/{attachment_id}-{arquivo}); nenhum
+    bucket/storage novo. Limites identicos aos anexos (25 MB, mesma whitelist de
+    content_type), pela mesma funcao assertAttachmentFileAllowed.
+  personal_data: >
+    Payload de system_event/auditoria/notificacao so com ids, nome do tipo de
+    documento e motivo de rejeicao. Nome do arquivo nunca entra em evento nem em
+    log (fica so em kanban_card_attachments, como nos anexos).
+paths:
+  /kanban/boards/{boardId}/document-types:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+    get:
+      tags: [DocumentTypes]
+      summary: Tipos de documento do quadro (ativos e inativos). Somente board_admin.
+      security:
+        - bearerAuth: [flow:admin]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/BoardDocumentType' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [DocumentTypes]
+      summary: Cria tipo de documento (nome unico entre os ativos do quadro). Somente board_admin.
+      security:
+        - bearerAuth: [flow:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 160 }
+                required: { type: boolean, default: true }
+                sortOrder: { type: integer, minimum: 0, description: 'omitido = fim da lista' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BoardDocumentType' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: '`document_type_name_taken`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /kanban/boards/{boardId}/document-types/{documentTypeId}:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - name: documentTypeId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [DocumentTypes]
+      summary: Edita ou desativa (`active=false`) tipo de documento. Nao ha DELETE.
+      security:
+        - bearerAuth: [flow:admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: { type: string, maxLength: 160 }
+                required: { type: boolean }
+                sortOrder: { type: integer, minimum: 0 }
+                active: { type: boolean }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BoardDocumentType' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: '`document_type_name_taken` (renomear/reativar colidindo com tipo ativo)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /kanban/boards/{boardId}/document-types/apply-initial-list:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+    post:
+      tags: [DocumentTypes]
+      summary: Aplica a lista inicial confirmada (8 itens). Idempotente.
+      description: >
+        So cria nomes que ainda nao existem no quadro (ativos ou inativos,
+        comparacao sem caixa e sem espacos nas pontas). Tipo desativado nao e
+        recriado nem reativado. Todos nascem obrigatorios, exceto "Demais
+        documentos" (premissa do orquestrador).
+      security:
+        - bearerAuth: [flow:admin]
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [created, skippedNames, data]
+                properties:
+                  created: { type: array, items: { $ref: '#/components/schemas/BoardDocumentType' } }
+                  skippedNames: { type: array, items: { type: string } }
+                  data: { type: array, items: { $ref: '#/components/schemas/BoardDocumentType' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /kanban/boards/{boardId}/cards/{cardId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+    get:
+      tags: [CardDocuments]
+      summary: Checklist do card. Qualquer membro ativo do quadro; `canUpload`/`canReview` decididos no backend.
+      security:
+        - bearerAuth: [flow:read]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardChecklist' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      tags: [CardDocuments]
+      summary: Envia documento de um item do checklist.
+      description: >
+        Mesma regra das mutacoes de card (board_admin/board_member, coluna do
+        card editavel pelo MemberProfile). Cria, numa transacao, o
+        system_event `card.document_uploaded`, o CardAttachment dessa activity e
+        a linha do documento (`enviado`). O objeto sobe antes; falha do storage
+        nao grava linha; falha da transacao remove o objeto recem-enviado.
+        Cada envio cria linha nova (historico); o estado do item e o do envio
+        mais recente.
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [documentTypeId, file]
+              properties:
+                documentTypeId: { type: string, format: uuid }
+                file: { type: string, format: binary, description: 'mesmos limites dos anexos (25 MB, whitelist)' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardDocument' }
+        '400': { description: '`file_required` ou validacao' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: 'card ou `document_type_not_found` (inclui tipo de outro quadro/tenant)' }
+        '413': { description: '`file_too_large`' }
+        '415': { description: '`content_type_not_allowed`' }
+        '422': { description: '`document_type_inactive`' }
+  /kanban/boards/{boardId}/cards/{cardId}/documents/{documentId}/review:
+    parameters:
+      - $ref: '#/components/parameters/BoardId'
+      - $ref: '#/components/parameters/CardId'
+      - name: documentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [CardDocuments]
+      summary: Aceita ou rejeita o envio mais recente de um item.
+      description: >
+        Somente board_admin ou board_member com perfil `can_review_documents`
+        (board_viewer nunca). So sobre status `enviado` e sobre o envio mais
+        recente do item. Grava system_event `card.document_accepted` ou
+        `card.document_rejected` (documentId, documentTypeId,
+        documentTypeName, rejectionReason) na mesma transacao. Rejeicao
+        notifica in-app responsaveis e criador do card, nunca o revisor.
+      security:
+        - bearerAuth: [flow:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: { type: string, enum: [aceito, rejeitado] }
+                rejectionReason: { type: string, maxLength: 1000, description: 'obrigatorio quando rejeitado' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardDocument' }
+        '400': { description: '`rejection_reason_required` ou validacao' }
+        '403':
+          description: '`cannot_review_documents`'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404': { description: 'card, quadro (inclui outro tenant) ou `document_not_found`' }
+        '409': { description: '`document_not_pending` | `document_superseded`' }
+x-changed-routes:
+  description: Campos aditivos e erro novo em rotas existentes dos contratos do kanban.
+  'GET /kanban/boards/{boardId}':
+    currentUserCapabilities.canReviewDocuments: boolean
+  'GET /kanban/boards/{boardId}/cards':
+    data[].documentChecklist: '{ acceptedRequired: integer, totalRequired: integer } (agregado por quadro, uma consulta)'
+  'POST|PATCH /kanban/boards/{boardId}/columns[/{columnId}]':
+    requiresCompleteChecklist: 'boolean (default false); devolvido em BoardColumn'
+  'POST|PATCH /kanban/boards/{boardId}/profiles[/{profileId}]':
+    canReviewDocuments: 'boolean (default false); devolvido em MemberProfile'
+  'POST /kanban/boards/{boardId}/cards':
+    '422': ChecklistIncomplete
+  'POST /kanban/boards/{boardId}/cards/{cardId}/move':
+    '422': 'ChecklistIncomplete (so quando muda de coluna; reordenar na mesma coluna nao avalia)'
+  'POST /domain-integrations/... (criacao de card de origem na coluna padrao)':
+    '422': 'REMOVIDO na Sprint 3 (2026-10-11): a importacao entra e o card fica `checklistPending`; ver flow-crm-leads-sprint-3-openapi.yaml'
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    BoardId: { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+    CardId: { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    BadRequest: { description: Validacao }
+    Forbidden: { description: Papel/scope insuficiente }
+    NotFound: { description: Recurso inexistente ou de outro tenant }
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+    ChecklistIncomplete:
+      type: object
+      description: 'HTTP 422'
+      required: [code, message, boardColumnId, pendingDocumentTypes]
+      properties:
+        code: { const: checklist_incomplete }
+        message: { type: string }
+        boardColumnId: { type: string, format: uuid }
+        pendingDocumentTypes:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+    BoardDocumentType:
+      type: object
+      required: [id, boardId, name, required, sortOrder, active, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        boardId: { type: string, format: uuid }
+        name: { type: string }
+        required: { type: boolean }
+        sortOrder: { type: integer }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CardDocument:
+      type: object
+      required: [id, cardId, documentTypeId, status, createdByIdentityId, createdAt, attachment]
+      properties:
+        id: { type: string, format: uuid }
+        cardId: { type: string, format: uuid }
+        documentTypeId: { type: string, format: uuid }
+        status: { type: string, enum: [enviado, aceito, rejeitado] }
+        rejectionReason: { type: [string, 'null'] }
+        reviewedByIdentityId: { type: [string, 'null'], format: uuid }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdByIdentityId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        attachment:
+          type: object
+          description: 'download pela rota de anexos existente (activityId + id)'
+          required: [id, activityId, fileName, contentType, sizeBytes]
+          properties:
+            id: { type: string, format: uuid }
+            activityId: { type: string, format: uuid }
+            fileName: { type: string }
+            contentType: { type: string }
+            sizeBytes: { type: integer }
+    CardChecklist:
+      type: object
+      required: [items, completeness, canUpload, canReview]
+      properties:
+        items:
+          type: array
+          description: 'tipos ativos + inativos com envio no card (fora da completude)'
+          items:
+            type: object
+            required: [documentTypeId, name, required, sortOrder, active, state, current, history]
+            properties:
+              documentTypeId: { type: string, format: uuid }
+              name: { type: string }
+              required: { type: boolean }
+              sortOrder: { type: integer }
+              active: { type: boolean }
+              state: { type: string, enum: [pendente, enviado, aceito, rejeitado] }
+              current: { oneOf: [{ $ref: '#/components/schemas/CardDocument' }, { type: 'null' }] }
+              history: { type: array, items: { $ref: '#/components/schemas/CardDocument' } }
+        completeness:
+          type: object
+          required: [acceptedRequired, totalRequired, complete]
+          properties:
+            acceptedRequired: { type: integer }
+            totalRequired: { type: integer }
+            complete: { type: boolean }
+        canUpload: { type: boolean }
+        canReview: { type: boolean }

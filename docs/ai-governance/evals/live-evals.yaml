@@ -1,0 +1,34 @@
+schema_version: "1.0.0"
+owner: ai-governance
+status: not_configured
+blocking_for_repository_conformance: false
+blocking_for_runtime_promotion: true
+last_review: "2026-08-03"
+review_due: "2026-11-03"
+
+policy:
+  trigger:
+    - scheduled
+    - manual_with_budget
+    - before_runtime_or_model_promotion
+  requirements:
+    - runtime_and_model_exact_version
+    - immutable_dataset_version
+    - threshold_by_scenario
+    - cost_budget
+    - sensitive_data_review
+    - persisted_result_artifact
+  prohibited:
+    - credentials_in_repository
+    - live_provider_call_on_every_pull_request
+    - promotion_without_baseline_comparison
+
+runtimes:
+  codex:
+    status: capability_not_exposed_to_repository_ci
+  claude:
+    status: credentials_not_configured
+  cursor:
+    status: capability_not_exposed_to_repository_ci
+  github_copilot:
+    status: capability_not_exposed_to_repository_ci

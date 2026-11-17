@@ -1,0 +1,402 @@
+openapi: 3.1.0
+info:
+  title: JBoot Flow CRM De Leads Sprint 6 API
+  version: 0.1.0
+  summary: >
+    Contrato incremental da Sprint 6 de docs/product/flow-crm-leads-sprints.md:
+    classificacao manual do caso pelo gestor (N casos por lead, P3), geracao do
+    documento `.docx` a partir do modelo, revisao (aprovar ou substituir por
+    versao editada), PDF do aprovado (Gotenberg, outbox + fila) e entrega ao
+    escritorio (P11). ADR 014, Decisoes 1, 2 e 4. Estende
+    flow-crm-leads-sprint-1/2/3/3-5/4/5-openapi.yaml; nenhuma rota existente muda
+    de formato. Mudanca de comportamento: `GET .../activities` deixa de devolver,
+    a quem nao tem `flow:admin`, os eventos de classificacao e geracao (P11).
+  x-implementation-status: >
+    Implementado em 2026-10-12 em
+    implementations/bff-jboot-platform/src/modules/kanban/lead-analysis/ e
+    implementations/bff-jboot-platform/src/modules/kanban/pdf/
+    (migration docker/postgres/init/066_kanban_lead_analysis_documents.sql).
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: LeadAnalysis
+  - name: LeadDocuments
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  authorization: >
+    `.../analysis/*`: scope `flow:admin` (ScopeGuard) + `requireAdmin` no servico
+    (403 `lead_admin_required`) + card visivel (`CardVisibilityService`: card
+    invisivel = 404 `Card not found`; com a visibilidade por escritorio
+    DESLIGADA o admin precisa ser membro do quadro, como na devolucao da S4).
+    `.../lead/documents*`: qualquer leitor do card visivel (escritorio do card);
+    so documento `aprovado` de caso ativo do ciclo atual; o resto = 404.
+  lead_state: >
+    Classificar, gerar, aprovar e substituir exigem lead `enviado`,
+    `aguardando_revisao` ou `aprovado` (senao 409 `lead_not_in_analysis`) e o
+    ciclo de envio atual (corrida com devolucao/reenvio = 409
+    `lead_cycle_changed`). Na mesma transacao (card travado):
+    primeiro documento do ciclo = `enviado -> aguardando_revisao` (PE14); todo
+    caso ativo com documento aprovado = `aguardando_revisao -> aprovado`; caso
+    acrescentado/trocado/removido sem documento aprovado =
+    `aprovado -> aguardando_revisao`. Devolver continua proibido a partir de
+    `aprovado` (S4).
+  generation: >
+    Modelo = versao ATUAL `valid` do modelo padrao do tipo de caso (ou do
+    `templateId` vinculado informado); `sha256` do objeto conferido antes de
+    renderizar (409 `template_integrity_mismatch`). Dados: `cliente.*` do
+    SNAPSHOT do envio atual (cadastro validado e congelado); `escritorio.nome`
+    do escritorio atual do card; `lead.*` do envio e dos casos ativos;
+    `caso.tipo` do caso do documento; `data.*` da geracao. Obrigatoria sem
+    valor = 422 `document_required_variables_missing` com a lista (nada e
+    gravado); opcional sem valor sai `[PREENCHER: <campo>]`. Render em worker
+    thread (timeout 20 s, heap 512 MB), valores sempre escapados.
+  storage: >
+    Bucket do modulo, chave `{client_id}/{card_id}/generated/{document_id}.docx`
+    (e `.pdf` do aprovado), sem nome de arquivo, objeto nunca sobrescrito.
+    Download por URL assinada de 5 min com nome `<modelo> - v<n>.<ext>`
+    (`<modelo> - rascunho v<n>.docx` para versao nunca aprovada).
+  pdf: >
+    Aprovar (ou substituir) grava `pdf_status = 'pending'` na mesma transacao
+    (outbox); fila BullMQ `kanban-document-pdf` (jobId `pdf-<documentId>`,
+    concorrencia 1, 3 tentativas com backoff) + varredura a cada 2 min.
+    Conversor Gotenberg na rede interna `jboot-pdf-internal` (basic auth,
+    multipart com nome generico `document.docx`, timeout 60 s, resposta
+    conferida por `%PDF-`). Falha nunca desfaz a aprovacao: `failed` = "PDF
+    pendente" com "Gerar PDF novamente".
+paths:
+  /kanban/boards/{boardId}/cards/{cardId}/analysis:
+    get:
+      tags: [LeadAnalysis]
+      summary: Analise do lead (somente flow:admin)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/cases:
+    post:
+      tags: [LeadAnalysis]
+      summary: Classifica o lead em mais um caso (tipo de caso ativo do tenant)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [caseTypeId]
+              properties: { caseTypeId: { type: string, format: uuid } }
+      responses:
+        '201': { description: Caso criado, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`case_type_not_found` ou card invisivel' }
+        '409': { description: '`lead_not_in_analysis`, `lead_cycle_changed`, `case_type_already_classified`' }
+        '422': { description: '`case_type_inactive`, `lead_case_limit_reached` (20 casos ativos)' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/cases/{caseId}:
+    patch:
+      tags: [LeadAnalysis]
+      summary: Troca auditada do tipo de caso (caso novo aponta para o anterior; documentos do anterior viram `substituido`)
+      parameters:
+        - { $ref: '#/components/parameters/BoardId' }
+        - { $ref: '#/components/parameters/CardId' }
+        - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [caseTypeId, reason]
+              properties:
+                caseTypeId: { type: string, format: uuid }
+                reason: { $ref: '#/components/schemas/Reason' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`lead_case_not_found`, `case_type_not_found`' }
+        '409': { description: '`lead_not_in_analysis`, `lead_cycle_changed`, `case_type_already_classified`' }
+        '422': { description: '`case_type_unchanged`, `case_type_inactive`' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/cases/{caseId}/remove:
+    post:
+      tags: [LeadAnalysis]
+      summary: Remocao auditada do caso (nada e apagado)
+      parameters:
+        - { $ref: '#/components/parameters/BoardId' }
+        - { $ref: '#/components/parameters/CardId' }
+        - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [reason], properties: { reason: { $ref: '#/components/schemas/Reason' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`lead_case_not_found`' }
+        '409': { description: '`lead_not_in_analysis`, `lead_cycle_changed`' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/cases/{caseId}/documents:
+    post:
+      tags: [LeadAnalysis]
+      summary: Gera o rascunho `.docx` do caso (versao nova; rascunho anterior vira `substituido`)
+      parameters:
+        - { $ref: '#/components/parameters/BoardId' }
+        - { $ref: '#/components/parameters/CardId' }
+        - { name: caseId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: { templateId: { type: string, format: uuid, description: 'Vinculado ao tipo; ausente = modelo padrao' } }
+      responses:
+        '201': { description: Rascunho gerado, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`lead_case_not_found`, `case_type_not_found`' }
+        '409': { description: '`lead_not_in_analysis`, `lead_cycle_changed`, `template_integrity_mismatch`' }
+        '422':
+          description: >
+            `document_required_variables_missing` (`missingVariables: [{key, label}]`),
+            `case_type_inactive`, `template_not_linked`, `case_type_without_default_template`,
+            `template_inactive`, `template_without_version`, `template_version_not_usable`,
+            `document_render_failed`, `template_validation_timeout`
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/documents/{documentId}/approve:
+    post:
+      tags: [LeadAnalysis]
+      summary: Aprova o rascunho (PDF pendente na mesma transacao; escritorio notificado)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }, { $ref: '#/components/parameters/DocumentId' }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`generated_document_not_found`, `lead_case_not_found`' }
+        '409': { description: '`document_not_reviewable` (`documentStatus`), `lead_not_in_analysis`, `lead_cycle_changed`' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/documents/{documentId}/edited-version:
+    post:
+      tags: [LeadAnalysis]
+      summary: Substitui o documento (rascunho ou aprovado) pela versao editada; nasce APROVADA com PDF novo
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }, { $ref: '#/components/parameters/DocumentId' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary, description: '.docx, ate 10 MB' } } }
+      responses:
+        '201':
+          description: Versao editada aprovada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [analysis, documentId, warnings]
+                properties:
+                  analysis: { $ref: '#/components/schemas/LeadAnalysis' }
+                  documentId: { type: string, format: uuid }
+                  warnings:
+                    type: array
+                    description: '`template_tag_left`, `fill_marker_left`, `attached_template_external`'
+                    items: { type: object, required: [code], properties: { code: { type: string }, detail: { type: string } } }
+        '400': { description: '`file_required`' }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`generated_document_not_found`' }
+        '409': { description: '`document_not_reviewable`, `lead_not_in_analysis`, `lead_cycle_changed`' }
+        '413': { description: '`document_too_large`, `file_too_large`' }
+        '415': { description: '`document_content_type_not_allowed`, `content_signature_mismatch`, `content_type_not_allowed`' }
+        '422':
+          description: >
+            Mesma seguranca de arquivo do modelo: `template_archive_invalid`,
+            `template_archive_limits_exceeded`, `template_not_word_document`,
+            `template_macro_forbidden`, `template_embedded_object_forbidden`,
+            `template_external_link_forbidden` (sem exigir variaveis)
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/documents/{documentId}/pdf/retry:
+    post:
+      tags: [LeadAnalysis]
+      summary: '"Gerar PDF novamente": `failed` volta a `pending` (tentativas zeradas) e e reenfileirado'
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }, { $ref: '#/components/parameters/DocumentId' }]
+      responses:
+        '202': { description: Reenfileirado, content: { application/json: { schema: { $ref: '#/components/schemas/LeadAnalysis' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`generated_document_not_found`' }
+        '409': { description: '`document_not_approved`, `pdf_already_generated`' }
+  /kanban/boards/{boardId}/cards/{cardId}/analysis/documents/{documentId}/download:
+    get:
+      tags: [LeadAnalysis]
+      summary: URL assinada de qualquer versao (gestor); PDF so quando gerado
+      parameters:
+        - { $ref: '#/components/parameters/BoardId' }
+        - { $ref: '#/components/parameters/CardId' }
+        - { $ref: '#/components/parameters/DocumentId' }
+        - { $ref: '#/components/parameters/Format' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Download' } } } }
+        '403': { $ref: '#/components/responses/AdminRequired' }
+        '404': { description: '`generated_document_not_found`' }
+        '409': { description: '`pdf_not_ready` (`pdfStatus`)' }
+  /kanban/boards/{boardId}/cards/{cardId}/lead/documents:
+    get:
+      tags: [LeadDocuments]
+      summary: Documentos ENTREGUES do lead (aprovados do ciclo atual) para quem ve o card (P11)
+      parameters: [{ $ref: '#/components/parameters/BoardId' }, { $ref: '#/components/parameters/CardId' }]
+      responses:
+        '200':
+          description: OK (sem tipo de caso, sem variaveis, sem historico)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cardId, leadStatus, documents]
+                properties:
+                  cardId: { type: string, format: uuid }
+                  leadStatus: { $ref: '#/components/schemas/LeadStatus' }
+                  documents:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, title, version, editedByManager, approvedAt, pdfStatus]
+                      properties:
+                        id: { type: string, format: uuid }
+                        title: { type: string, description: Nome do modelo }
+                        version: { type: integer }
+                        editedByManager: { type: boolean }
+                        approvedAt: { type: string, format: date-time }
+                        pdfStatus: { type: string, enum: [ready, pending] }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /kanban/boards/{boardId}/cards/{cardId}/lead/documents/{documentId}/download:
+    get:
+      tags: [LeadDocuments]
+      summary: URL assinada do documento entregue (.docx ou PDF)
+      parameters:
+        - { $ref: '#/components/parameters/BoardId' }
+        - { $ref: '#/components/parameters/CardId' }
+        - { $ref: '#/components/parameters/DocumentId' }
+        - { $ref: '#/components/parameters/Format' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Download' } } } }
+        '404': { description: '`generated_document_not_found` (rascunho, substituido, outro ciclo) ou card invisivel' }
+        '409': { description: '`pdf_not_ready`' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    BoardId: { name: boardId, in: path, required: true, schema: { type: string, format: uuid } }
+    CardId: { name: cardId, in: path, required: true, schema: { type: string, format: uuid } }
+    DocumentId: { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+    Format: { name: format, in: query, required: false, schema: { type: string, enum: [docx, pdf], default: docx } }
+  responses:
+    AdminRequired: { description: '`lead_admin_required` (ou 403 do ScopeGuard; com a chave de escritorio desligada, admin nao membro)' }
+    NotFound: { description: '`Board not found` / `Card not found` (card invisivel nao e revelado)' }
+  schemas:
+    Reason: { type: string, minLength: 10, maxLength: 500, description: Aparado; vai para evento e auditoria }
+    LeadStatus:
+      type: string
+      enum: [rascunho, enviado, em_processamento, aguardando_revisao, aprovado, devolvido, falha_processamento]
+    Download:
+      type: object
+      required: [url, expiresAt, fileName]
+      properties:
+        url: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+        fileName: { type: string }
+    Pdf:
+      type: object
+      required: [status, attempts, errorCode, completedAt]
+      properties:
+        status: { type: string, enum: [pending, done, failed] }
+        attempts: { type: integer }
+        errorCode:
+          type: [string, 'null']
+          description: >
+            `converter_not_configured`, `converter_unavailable`, `converter_timeout`,
+            `converter_auth_failed`, `converter_rejected`, `converter_invalid_output`,
+            `source_missing`, `source_integrity_mismatch`, `storage_unavailable`,
+            `stored_pdf_invalid`, `internal_error`
+        completedAt: { type: [string, 'null'], format: date-time }
+    GeneratedDocument:
+      type: object
+      description: Visao do gestor. Valores das variaveis NUNCA saem (ficam em `filled_variables` no banco do tenant).
+      required: [id, caseId, version, origin, status, templateId, templateName, templateVersionId, templateVersion, templateSha256, createdAt, pdf, missingOptional, variables]
+      properties:
+        id: { type: string, format: uuid }
+        caseId: { type: string, format: uuid }
+        version: { type: integer }
+        origin: { type: string, enum: [generated, uploaded_edit] }
+        status: { type: string, enum: [rascunho, aprovado, substituido] }
+        basedOnDocumentId: { type: [string, 'null'], format: uuid }
+        templateId: { type: string, format: uuid }
+        templateName: { type: string }
+        templateVersionId: { type: string, format: uuid }
+        templateVersion: { type: integer }
+        templateSha256: { type: string }
+        catalogVersion: { type: integer }
+        sizeBytes: { type: integer }
+        createdByIdentityId: { type: string, format: uuid }
+        createdByName: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        approvedByIdentityId: { type: [string, 'null'], format: uuid }
+        approvedByName: { type: [string, 'null'] }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        pdf: { oneOf: [{ $ref: '#/components/schemas/Pdf' }, { type: 'null' }] }
+        missingOptional: { type: array, items: { type: string } }
+        variables:
+          type: array
+          items:
+            type: object
+            required: [key, label, origin, required, filled]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              origin: { type: string, enum: [cadastro_enviado, escritorio, lead, caso, sistema] }
+              required: { type: boolean }
+              filled: { type: boolean }
+    LeadCase:
+      type: object
+      required: [id, caseTypeId, caseTypeName, caseTypeActive, source, decidedByIdentityId, decidedAt, documents]
+      properties:
+        id: { type: string, format: uuid }
+        caseTypeId: { type: string, format: uuid }
+        caseTypeName: { type: string }
+        caseTypeActive: { type: boolean }
+        source: { type: string, enum: [manual, ai] }
+        decidedByIdentityId: { type: string, format: uuid }
+        decidedByName: { type: [string, 'null'] }
+        decidedAt: { type: string, format: date-time }
+        replacesCaseId: { type: [string, 'null'], format: uuid }
+        supersededAt: { type: [string, 'null'], format: date-time }
+        supersededByName: { type: [string, 'null'] }
+        supersededReason: { type: [string, 'null'] }
+        documents: { type: array, description: Mais nova primeiro, items: { $ref: '#/components/schemas/GeneratedDocument' } }
+    LeadAnalysis:
+      type: object
+      required: [cardId, leadStatus, submissionId, analysisOpen, caseTypes, cases, removedCases]
+      properties:
+        cardId: { type: string, format: uuid }
+        leadStatus: { $ref: '#/components/schemas/LeadStatus' }
+        submissionId: { type: [string, 'null'], format: uuid }
+        analysisOpen: { type: boolean }
+        caseTypes:
+          type: array
+          description: Tipos de caso ATIVOS com os modelos vinculados
+          items:
+            type: object
+            required: [id, name, templates]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              templates:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, isDefault, usable, unusableReason]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    isDefault: { type: boolean }
+                    usable: { type: boolean }
+                    unusableReason: { type: [string, 'null'], enum: [template_inactive, template_without_version, template_version_not_usable, null] }
+        cases: { type: array, items: { $ref: '#/components/schemas/LeadCase' } }
+        removedCases: { type: array, description: Casos trocados ou removidos (auditados), items: { $ref: '#/components/schemas/LeadCase' } }

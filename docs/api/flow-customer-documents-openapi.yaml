@@ -1,0 +1,421 @@
+openapi: 3.1.0
+info:
+  title: Flow — Documentos Da Ficha Do Cliente
+  version: 0.1.0
+  description: |
+    S1 de docs/product/flow-customer-documents-sprints.md (ADR 017). Catalogo fixo;
+    uploads opcionais para salvar o cliente e obrigatorios para validar. Visibilidade
+    igual a da ficha (escritorio ou flow:admin): cliente invisivel responde 404.
+    Arquivos ficam no MinIO com chave sem nome de arquivo; o nome fica so no banco.
+servers:
+  - url: https://apinode.jboot.com.br
+security:
+  - bearerAuth: []
+paths:
+  /kanban/customers/{customerId}/documents:
+    parameters: [{ $ref: '#/components/parameters/CustomerId' }]
+    get:
+      summary: Documentos atuais da ficha, exigidos e pendentes
+      description: Scopes flow:customers:read ou flow:admin.
+      responses:
+        '200': { description: Ficha, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerDocuments' } } } }
+        '404': { description: Cliente inexistente ou invisivel (customer_not_found) }
+  /kanban/customers/{customerId}/documents/profile:
+    parameters: [{ $ref: '#/components/parameters/CustomerId' }]
+    patch:
+      summary: Perfil da ficha (comprovante de terceiro, CPF na identidade)
+      description: |
+        Scopes flow:customers:write ou flow:admin. Patch parcial: campo ausente preserva o valor.
+        residenceProofThirdParty=true exige a declaracao de residencia de terceiros;
+        cpfOnIdentity=true (S6) dispensa o documento CPF quando o RG novo ou a CNH trazem o numero.
+        Mudar o perfil invalida o parecer anterior.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                residenceProofThirdParty: { type: boolean }
+                cpfOnIdentity: { type: boolean }
+      responses:
+        '200': { description: Ficha atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerDocuments' } } } }
+        '404': { description: Cliente invisivel }
+        '422': { description: Nenhum campo informado (customer_document_profile_empty) }
+  /kanban/customers/{customerId}/documents/{documentType}:
+    parameters:
+      - { $ref: '#/components/parameters/CustomerId' }
+      - { name: documentType, in: path, required: true, schema: { $ref: '#/components/schemas/CustomerDocumentType' } }
+    post:
+      summary: Envia nova versao do documento (substitui a corrente)
+      description: Scopes flow:customers:write ou flow:admin. Multipart campo `file`; PDF, PNG, JPEG ou WebP ate 25 MB, com assinatura do conteudo conferida.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { type: object, required: [file], properties: { file: { type: string, format: binary } } }
+      responses:
+        '201': { description: Ficha atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerDocuments' } } } }
+        '400': { description: Tipo desconhecido (customer_document_type_invalid) ou arquivo ausente (file_required) }
+        '404': { description: Cliente invisivel }
+        '413': { description: Arquivo acima de 25 MB (file_too_large) }
+        '415': { description: Formato fora da ficha (content_type_not_allowed) ou conteudo divergente (content_signature_mismatch) }
+        '422': { description: 'PDF com senha (customer_document_password_protected) ou que nao abre (customer_document_unreadable); nada e gravado (S6)' }
+    delete:
+      summary: Remove logicamente a versao corrente (historico preservado)
+      description: Scopes flow:customers:write ou flow:admin.
+      responses:
+        '200': { description: Ficha atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerDocuments' } } } }
+        '404': { description: Sem versao corrente (customer_document_not_found) ou cliente invisivel }
+  /kanban/customers/{customerId}/documents/versions/{documentId}/download:
+    parameters:
+      - { $ref: '#/components/parameters/CustomerId' }
+      - { name: documentId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: URL assinada (5 min) de qualquer versao do cliente
+      description: Scopes flow:customers:read ou flow:admin.
+      responses:
+        '200':
+          description: URL
+          content:
+            application/json:
+              schema: { type: object, required: [url, expiresAt], properties: { url: { type: string }, expiresAt: { type: string, format: date-time } } }
+        '404': { description: Versao de outro cliente/tenant ou cliente invisivel }
+  /kanban/customers/{customerId}/validation:
+    parameters: [{ $ref: '#/components/parameters/CustomerId' }]
+    get:
+      summary: Status da validacao da ficha e ultimos runs (S2)
+      description: Scopes flow:customers:read ou flow:admin. Run `dispatched` vira `expired` sem leitura do pedido pela rotina em 5 min (`routine_not_reached`) ou 15 min sem chamada ao conector depois dela (`routine_no_answer`).
+      responses:
+        '200': { description: Status, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationStatus' } } } }
+        '404': { description: Cliente invisivel }
+    post:
+      summary: Validar dados (dispara a rotina Claude do escritorio ou da conta principal)
+      description: |
+        Scopes flow:customers:write ou flow:admin. Exige todos os documentos exigidos e rotina configurada.
+        ADR 018: cliente com um escritorio usa a rotina da conta Claude dele; com varios, `officeId` escolhe entre
+        os escritorios do cliente visiveis ao usuario. Escritorio sem rotina propria e cliente sem escritorio usam a
+        conta principal (ADR 017). Quem clicou fica registrado. Falha de disparo vira run `failed` com codigo.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, properties: { officeId: { type: string, format: uuid } } }
+      responses:
+        '201': { description: Status apos o disparo, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationStatus' } } } }
+        '404': { description: Cliente invisivel }
+        '409': { description: 'customer_validation_office_required (com `offices`), customer_validation_not_configured, customer_documents_incomplete ou customer_validation_in_progress' }
+        '422': { description: customer_validation_office_not_allowed }
+  /kanban/customers/{customerId}/validation/runs/{runId}/confirm:
+    parameters:
+      - { $ref: '#/components/parameters/CustomerId' }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Confirmacao humana do parecer (unica forma de validar o cliente)
+      description: |
+        Scope flow:validation:approve ("Aprovar parecer da validacao", ADR 018). Recusa se os documentos mudaram desde o parecer.
+        Depois de confirmar, fora da mesma transacao: card no BACKLOG do board de entrada (ADR 019, decisao 16) e kit do
+        escritorio (decisao 19) so com parecer aprovado e modelo `.docx`, enviado ao Drive; o resultado fica em
+        `intakeResult` e `kitResult` do run e falha nao desfaz a confirmacao.
+      responses:
+        '201': { description: Status, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationStatus' } } } }
+        '404': { description: Run de outro cliente ou cliente invisivel (customer_validation_not_found) }
+        '409': { description: 'customer_validation_not_answered ou customer_documents_changed' }
+  /kanban/customers/{customerId}/validation/runs/{runId}/kit-review:
+    parameters:
+      - { $ref: '#/components/parameters/CustomerId' }
+      - { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Revisao humana dos valores do kit (ADR 019)
+      description: |
+        Scope flow:validation:approve. So para parecer `aprovado` do proprio cliente. Substitui a sugestao da IA na
+        geracao do kit (Sprint 4); os valores da IA continuam gravados. Valor vazio = tag sem valor. Tag fora do modelo
+        da validacao (exceto BANCO_n/CONTRATO_n/INICIO_n/VALOR_n/PARCELAS_n com o `_1` no modelo) e recusada.
+        Auditoria so com nomes de tags.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KitReview' }
+      responses:
+        '200': { description: Status, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationStatus' } } } }
+        '404': { description: Run de outro cliente ou cliente invisivel (customer_validation_not_found) }
+        '409': { description: 'customer_validation_kit_not_available (parecer nao aprovado) ou customer_validation_kit_already_generated (validacao ja confirmada: o kit saiu na confirmacao)' }
+        '422': { description: 'customer_validation_kit_tag_invalid (com `tags`)' }
+  /kanban/settings/customer-validation/offices/{officeId}/intake-board:
+    put:
+      summary: Board de entrada do escritorio (ADR 019, decisao 16)
+      description: |
+        Scope flow:admin. Ao confirmar a validacao, o cliente ganha card na coluna BACKLOG deste board,
+        ja vinculado. `boardId` null remove (a confirmacao deixa de criar card para o escritorio).
+      parameters:
+        - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [boardId], properties: { boardId: { type: [string, 'null'], format: uuid } } }
+      responses:
+        '200': { description: Configuracao, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationSettings' } } } }
+        '404': { description: 'office_not_found ou board_not_found (inexistente, de outro tenant ou arquivado)' }
+  /kanban/settings/customer-validation/documents:
+    put:
+      summary: Documentos que a rotina de validacao pode ler (ADR 019)
+      description: |
+        Scope flow:admin. Vale a partir do proximo pedido (gravado no run). Documento fora da lista continua exigido no
+        cadastro, nao e listado nem lido pela rotina (`document_not_allowed`) e aparece como `nao_conferido`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [documentTypes]
+              properties:
+                documentTypes: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/CustomerDocumentType' } }
+      responses:
+        '200': { description: Configuracao, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationSettings' } } } }
+  /kanban/settings/customer-validation:
+    get:
+      summary: Agente de validacao da empresa
+      description: Scope flow:admin.
+      responses:
+        '200': { description: Configuracao, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationSettings' } } } }
+    put:
+      summary: Define o agente de rotina; quem salva vira a identidade central executora
+      description: Scope flow:admin. O gateway so executa agente do proprio dono.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [agentId], properties: { agentId: { type: string, format: uuid } } }
+      responses:
+        '200': { description: Configuracao, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationSettings' } } } }
+  /kanban/settings/customer-validation/offices/{officeId}:
+    put:
+      summary: Agente de rotina da conta Claude do escritorio (ADR 018)
+      description: |
+        Scope flow:admin. O admin indica o escritorio e o agente (dele no gateway) com URL e token da rotina da conta
+        Claude do escritorio. `agentId` null remove; o escritorio volta a usar a conta principal. O parecer so e aceito
+        de um responsavel do escritorio.
+      parameters:
+        - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false, required: [agentId], properties: { agentId: { type: [string, 'null'], format: uuid } } }
+      responses:
+        '200': { description: Configuracao, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerValidationSettings' } } } }
+        '404': { description: office_not_found }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    CustomerId: { name: customerId, in: path, required: true, schema: { type: string, format: uuid } }
+  schemas:
+    CustomerDocumentType:
+      type: string
+      enum: [identidade, cpf, comprovante_residencia, declaracao_residencia_terceiro, extrato_beneficio, hiscred]
+      description: extrato_beneficio identifica HISCON e preserva os uploads anteriores; hiscred identifica HISCRED.
+    CustomerDocuments:
+      type: object
+      required: [customerId, residenceProofThirdParty, cpfOnIdentity, complete, missing, items]
+      properties:
+        customerId: { type: string, format: uuid }
+        residenceProofThirdParty: { type: boolean }
+        cpfOnIdentity: { type: boolean, description: 'RG novo/CNH trazem o CPF: documento CPF dispensado (S6)' }
+        complete: { type: boolean, description: 'Todos os exigidos enviados; condicao para Validar dados (S2)' }
+        missing: { type: array, items: { $ref: '#/components/schemas/CustomerDocumentType' } }
+        items:
+          type: array
+          items:
+            type: object
+            required: [type, label, required, current, review]
+            properties:
+              type: { $ref: '#/components/schemas/CustomerDocumentType' }
+              label: { type: string }
+              required: { type: boolean }
+              current:
+                oneOf:
+                  - { type: 'null' }
+                  - type: object
+                    required: [id, version, fileName, contentType, sizeBytes, uploadedByIdentityId, uploadedAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      version: { type: integer, minimum: 1 }
+                      fileName: { type: string }
+                      contentType: { type: string, enum: [application/pdf, image/png, image/jpeg, image/webp] }
+                      sizeBytes: { type: integer }
+                      uploadedByIdentityId: { type: string, format: uuid }
+                      uploadedAt: { type: string, format: date-time }
+              review:
+                description: Ultimo parecer da IA sobre exatamente o arquivo atual (S6); null se ainda nao foi lido
+                oneOf:
+                  - { type: 'null' }
+                  - type: object
+                    required: [outcome, status, note, answeredAt, confirmed]
+                    properties:
+                      outcome: { type: string, enum: [aprovado, recusado, nao_conferido], description: 'nao_conferido: na ficha, mas nao liberado para a rotina (ADR 019)' }
+                      status: { type: [string, 'null'], enum: [ok, pendente, ilegivel, divergente, null] }
+                      note: { type: string, maxLength: 500 }
+                      answeredAt: { type: string, format: date-time }
+                      confirmed: { type: boolean }
+    CustomerValidationSettings:
+      type: object
+      required: [agentId, executorIdentityId, executorIsCurrentUser, updatedAt, readableDocumentTypes, boards, offices]
+      properties:
+        boards:
+          type: array
+          description: Boards ativos para o board de entrada de cada escritorio
+          items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+        readableDocumentTypes:
+          type: array
+          items: { $ref: '#/components/schemas/CustomerDocumentType' }
+          description: Documentos que a rotina de validacao pode ler; sem politica, todos (ADR 019)
+        agentId: { type: [string, 'null'], format: uuid, description: Conta principal (reserva) }
+        executorIdentityId: { type: [string, 'null'], format: uuid }
+        executorIsCurrentUser: { type: boolean }
+        updatedAt: { type: [string, 'null'], format: date-time }
+        offices:
+          type: array
+          description: Rotina da conta Claude de cada escritorio e seus responsaveis (ADR 018)
+          items:
+            type: object
+            required: [officeId, officeName, active, agentId, agentOwnerIsCurrentUser, updatedAt, intakeBoardId, responsibles]
+            properties:
+              officeId: { type: string, format: uuid }
+              officeName: { type: string }
+              active: { type: boolean }
+              agentId: { type: [string, 'null'], format: uuid }
+              agentOwnerIsCurrentUser: { type: boolean }
+              updatedAt: { type: [string, 'null'], format: date-time }
+              intakeBoardId: { type: [string, 'null'], format: uuid, description: Board de entrada do escritorio }
+              responsibles:
+                type: array
+                items: { type: object, properties: { identityId: { type: string, format: uuid }, displayName: { type: [string, 'null'] } } }
+    CustomerValidationStatus:
+      type: object
+      required: [customerId, status, documentsComplete, missing, configured, offices, runs, kitModel]
+      properties:
+        customerId: { type: string, format: uuid }
+        status: { type: string, enum: [documentos_incompletos, em_validacao, aguardando_confirmacao, validado, nao_validado] }
+        documentsComplete: { type: boolean }
+        missing: { type: array, items: { $ref: '#/components/schemas/CustomerDocumentType' } }
+        configured: { type: boolean, description: Alguma rotina (escritorio ou conta principal) atende o cliente }
+        offices:
+          type: array
+          description: Escritorios do cliente visiveis ao usuario e a conta que valida por cada um (ADR 018)
+          items:
+            type: object
+            required: [id, name, route]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              route: { type: string, enum: [office, central, none] }
+        kitModel:
+          description: Modelo do kit usado no ultimo parecer (tags sem blocos e sem as calculadas pelo Flow); null sem modelo
+          oneOf:
+            - { type: 'null' }
+            - type: object
+              required: [runId, officeId, officeName, version, tags]
+              properties:
+                runId: { type: string, format: uuid }
+                officeId: { type: string, format: uuid }
+                officeName: { type: [string, 'null'] }
+                version: { type: integer }
+                tags: { type: array, items: { type: string } }
+        runs:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              status: { type: string, enum: [dispatching, dispatched, answered, failed, expired] }
+              requestedByIdentityId: { type: string, format: uuid }
+              executorIdentityId: { type: string, format: uuid }
+              verdict: { type: [string, 'null'], enum: [aprovado, pendencias, null] }
+              findings:
+                type: [array, 'null']
+                items:
+                  type: object
+                  properties:
+                    documentType: { $ref: '#/components/schemas/CustomerDocumentType' }
+                    status: { type: string, enum: [ok, pendente, ilegivel, divergente] }
+                    note: { type: string, maxLength: 500 }
+              summary: { type: [string, 'null'], maxLength: 4000 }
+              cpfOnIdentity: { type: boolean }
+              readableDocumentTypes: { type: [array, 'null'], items: { $ref: '#/components/schemas/CustomerDocumentType' } }
+              contractVersion: { type: [integer, 'null'] }
+              tagValues: { type: [object, 'null'], additionalProperties: { type: string, maxLength: 500 }, description: 'Valores do kit sugeridos pela IA; so com parecer aprovado' }
+              gender: { type: [string, 'null'], enum: [masculino, feminino, null] }
+              waiverCourt: { type: [string, 'null'], enum: [jec, jef, null] }
+              generalFindings: { type: [array, 'null'], items: { type: string, maxLength: 500 } }
+              alerts: { type: [array, 'null'], items: { type: string, maxLength: 500 } }
+              review: { oneOf: [{ type: 'null' }, { $ref: '#/components/schemas/KitReview' }] }
+              reviewedAt: { type: [string, 'null'], format: date-time }
+              intakeResult:
+                type: [string, 'null']
+                enum: [created, existing, no_office, no_board, no_backlog, failed, null]
+                description: Card criado na confirmacao no BACKLOG do board de entrada do escritorio (ADR 019, decisao 16)
+              intakeBoardId: { type: [string, 'null'], format: uuid }
+              intakeCardId: { type: [string, 'null'], format: uuid }
+              intakeAssignees:
+                description: Responsaveis do escritorio atribuidos ao card de entrada e os que ficaram de fora (2026-10-29)
+                oneOf:
+                  - type: 'null'
+                  - type: object
+                    required: [assigned, skipped]
+                    properties:
+                      assigned:
+                        type: array
+                        items: { type: object, required: [identityId, name], properties: { identityId: { type: string, format: uuid }, name: { type: [string, 'null'] } } }
+                      skipped:
+                        type: array
+                        items:
+                          type: object
+                          required: [identityId, name, reason]
+                          properties:
+                            identityId: { type: string, format: uuid }
+                            name: { type: [string, 'null'] }
+                            reason: { type: string, enum: [not_board_member, not_in_card_office] }
+                      error: { type: string, enum: [assign_failed] }
+              kitResult:
+                type: [string, 'null']
+                enum: [generated, not_approved, no_model, model_not_docx, failed, null]
+                description: Kit do escritorio gerado na confirmacao (ADR 019, decisao 19); o arquivo vai so para o Drive
+              kitId: { type: [string, 'null'], format: uuid }
+              kit:
+                oneOf:
+                  - type: 'null'
+                  - type: object
+                    required: [id, fileName, report, driveState, driveActive, createdAt]
+                    properties:
+                      id: { type: string, format: uuid }
+                      fileName: { type: string, examples: ['KIT_MARIA_DA_SILVA_2026-10-28.docx'] }
+                      report:
+                        type: object
+                        description: 'emptyTags (ficaram [[TAG]]), unresolvedMarks, contracts, institutions, warnings; sem valor do kit'
+                      driveState: { type: [string, 'null'], enum: [pending, syncing, synced, failed, null] }
+                      driveActive: { type: boolean }
+                      createdAt: { type: string, format: date-time }
+              appliedFields:
+                type: array
+                items: { type: string }
+                description: Campos da ficha que estavam vazios e foram preenchidos com extractedData (S6)
+              externalSessionUrl: { type: [string, 'null'] }
+              errorCode: { type: [string, 'null'] }
+              confirmedAt: { type: [string, 'null'], format: date-time }
+              matchesCurrentDocuments: { type: boolean, description: 'Versoes e perfil (terceiro, CPF na identidade) iguais aos do parecer' }
+    KitReview:
+      type: object
+      additionalProperties: false
+      required: [values, gender, waiverCourt]
+      properties:
+        values: { type: object, additionalProperties: { type: string, maxLength: 500 } }
+        gender: { type: [string, 'null'], enum: [masculino, feminino, null] }
+        waiverCourt: { type: [string, 'null'], enum: [jec, jef, null] }

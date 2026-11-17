@@ -1,0 +1,75 @@
+schema_version: "1.0.0"
+execution_id: "20261022-flow-office-kit-planning"
+date: "2026-10-22"
+mode: planning
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  - docs/product/flow-office-service-contract-sprints.md
+  - docs/product/flow-office-kit-routine-prompt.md
+  - docs/ai-governance/attestations/2026-10-22-flow-office-kit-planning.yaml
+  - implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+  - implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md
+  - implementations/bff-jboot-platform/AI_CONTEXT.md
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "7128de183c9ff4eef28847393b538f18e26a3aecccf0046ff3d206ece06ba4cc"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "46eb9fa00666ee6d4f07285901c717ebf614eced6390d86d02c03d6fa8fbe8da"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "b9bf1ad332cdeefb8562e5ae8744e7ad48ab863d9dafbcbe82cbddb4915b7845"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-22 o usuario definiu que o modelo do escritorio contem todas as tags do
+    kit e que o kit sai da substituicao pelos valores da IA; pediu documentos por etapa;
+    confirmou as recomendacoes 4 a 9 da ADR 019, dado de entrevista ausente impeditivo,
+    renuncia pela regra do prompt do escritorio, .docx, declaracao de residencia fora do
+    kit e HISCRED so na Analise de Acoes; aprovou o commit e o inicio da Sprint 2.
+security_review:
+  status: not_applicable
+  evidence:
+    - docs/architecture/decisions/019-flow-office-kit-generated-by-flow.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-check aprovado
+  - modelo cadastrado de Manaus (versao 2) inspecionado - 24 tags, 4 tabelas, 47 marcas de genero/plural, declaracao de residencia condicional
+  - nomes e limites das ferramentas do conector conferidos no codigo (runId, summary 4000, note 500)
+result: >-
+  Planejamento do kit do escritorio - ADR 019 aceita, Sprints 2 a 4 replanejadas
+  (valores pela IA e documentos por etapa, modelo .docx, kit .docx) e prompt da
+  rotina adaptado ao novo fluxo. Sem codigo.

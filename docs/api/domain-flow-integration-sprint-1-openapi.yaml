@@ -1,0 +1,386 @@
+openapi: 3.1.0
+info:
+  title: JBoot Domain Integrations API
+  version: 1.0.0
+  summary: Contrato para exportar registros de dominios do Hub para cards do Flow.
+servers:
+  - url: http://localhost:8010
+security:
+  - bearerAuth: []
+tags:
+  - name: DomainIntegrations
+x-jboot-context:
+  identity_provider: bff-jboot-identity
+  tenant_source: jwt.client_id
+  client_id_in_payload: forbidden
+  database_ref_in_payload: forbidden
+  cross_domain_context: resolved_server_side
+paths:
+  /domain-integrations/flow/boards:
+    get:
+      tags: [DomainIntegrations]
+      summary: List Flow boards available as import destinations for the current client.
+      description: >
+        Returns capability information and boards accessible by the current user.
+        If the client does not have Flow contracted, `flowEnabled` is false and
+        `boards` is empty.
+      responses:
+        '200':
+          description: Flow import destinations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowBoardsResponse'
+  /domain-integrations/juridico/pje/comunicacoes/{id}/export-flow:
+    post:
+      tags: [DomainIntegrations]
+      summary: Export one Juridico PJe communication to a Flow card.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportToFlowRequest'
+      responses:
+        '201':
+          description: Card created or resolved idempotently.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportToFlowResponse'
+        '403':
+          description: Client does not have Flow contracted or user cannot access target board.
+        '404':
+          description: Juridico record or board not found in current tenant context.
+  /domain-integrations/juridico/datajud/processos/{snapshotId}/export-flow:
+    post:
+      tags: [DomainIntegrations]
+      summary: Export one persisted DataJud snapshot to a Flow card.
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExportToFlowRequest' }
+      responses:
+        '201':
+          description: Card created or resolved idempotently.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportToFlowResponse' }
+        '403': { description: Missing effective access to Juridico or Flow. }
+        '404': { description: Snapshot or target board not found in the resolved tenant contexts. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento:
+    parameters:
+      - name: cardId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [DomainIntegrations]
+      summary: Read DataJud monitoring state for a Flow card.
+      responses:
+        '200':
+          description: Monitoring state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardMonitoringState' }
+        '403': { description: Missing Flow membership. Juridico is only read for a DataJud-exported card without monitor (ADR 021). }
+        '404': { description: Card has no source link in the resolved contexts. }
+    post:
+      tags: [DomainIntegrations]
+      summary: Enable or pause DataJud monitoring for a Flow card.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCardMonitoringRequest' }
+      responses:
+        '201':
+          description: Monitoring state changed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardMonitoringMutation' }
+        '403': { description: Missing Flow write role or process_monitoring_not_contracted. }
+        '404': { description: Source link or retained snapshot not found. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/cadencia:
+    patch:
+      tags: [DomainIntegrations]
+      summary: Change the cadence of the active DataJud monitor linked to a Flow card.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetCardMonitoringCadenceRequest' }
+      responses:
+        '200':
+          description: Cadence changed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardMonitoringMutation' }
+        '403': { description: Missing Flow write role or Juridico entitlement. }
+        '404': { description: Active monitor not found. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/publicacoes:
+    get:
+      tags: [DomainIntegrations]
+      summary: DJEN publications of the monitor linked to a Flow card (ADR 022); plain text, never provider HTML.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Publications, most recent first (empty when the card has no monitor).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardPublications' }
+        '403': { description: Missing Flow read role or board access. }
+        '404': { description: Card not found or not visible. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/djen:
+    post:
+      tags: [DomainIntegrations]
+      summary: Turn the DJEN source of the card monitor on or off (ADR 022); both sources off pause the monitor.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '201':
+          description: DJEN state of the card.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardDjenState' }
+        '403': { description: Missing Flow write role or process_publications_not_contracted. }
+        '404': { description: Card has no monitor. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/djen/cadencia:
+    patch:
+      tags: [DomainIntegrations]
+      summary: DJEN frequency in business days (1, 3 or 7), applied on the next daily cycle.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [days]
+              properties:
+                days: { type: integer, enum: [1, 3, 7] }
+      responses:
+        '200':
+          description: DJEN state of the card.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardDjenState' }
+        '403': { description: Missing Flow write role. }
+        '404': { description: Card has no monitor. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/movimentacoes/{movementId}/djen:
+    post:
+      tags: [DomainIntegrations]
+      summary: >-
+        "Ver no DJEN" for a card movement (process-monitoring-sprints.md, Sprint 9): searches the DJEN from 3 days
+        before to 10 days after the movement date, stores the results as history (never new, no event) and returns
+        the publications of that period. Requires publicacoes-processuais, even with the card DJEN source off.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: movementId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Period searched and its publications.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [from, to, items]
+                properties:
+                  from: { type: string, format: date }
+                  to: { type: string, format: date }
+                  items: { $ref: '#/components/schemas/CardPublications/properties/items' }
+        '403': { description: Missing Flow read role or process_publications_not_contracted. }
+        '404': { description: Card, monitor or movement not found, or movement without date. }
+        '503': { description: DJEN or data service unavailable. }
+  /domain-integrations/flow/cards/{cardId}/monitoramento/movimentacoes:
+    get:
+      tags: [DomainIntegrations]
+      summary: >-
+        Process movements of the monitor linked to a Flow card (process-monitoring-sprints.md, Sprint 5):
+        the history the process already had plus the ones detected later. Read only; no card event or automation.
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Movements, most recent first (empty when the card has no monitor).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardProcessMovements' }
+        '403': { description: Missing Flow read role or board access. }
+        '404': { description: Card not found or not visible. }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    FlowBoardsResponse:
+      type: object
+      required: [flowEnabled, boards, offices]
+      properties:
+        flowEnabled:
+          type: boolean
+        boards:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowBoardOption'
+        offices:
+          type: array
+          description: Escritorios ativos em que o usuario pode criar card (todos para flow:admin, os proprios para os demais).
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+    FlowBoardOption:
+      type: object
+      required: [id, name, defaultColumnId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        defaultColumnId:
+          type: string
+          format: uuid
+    ExportToFlowRequest:
+      type: object
+      additionalProperties: false
+      required: [boardId, officeId]
+      properties:
+        boardId: { type: string, format: uuid }
+        officeId:
+          type: string
+          format: uuid
+          description: Escritorio do card no Flow (obrigatorio; mesma regra da criacao manual).
+    ExportToFlowResponse:
+      type: object
+      required: [boardId, cardId, cardUrl, created]
+      properties:
+        boardId:
+          type: string
+          format: uuid
+        cardId:
+          type: string
+          format: uuid
+        cardUrl:
+          type: string
+        created:
+          type: boolean
+    CardMonitoringState:
+      type: object
+      additionalProperties: false
+      required: [monitoring, monitorId, hasSource, contracted]
+      properties:
+        monitoring: { type: boolean }
+        monitorId: { type: [string, 'null'], format: uuid }
+        hasSource: { type: boolean }
+        contracted:
+          type: boolean
+          description: Capacidade monitoramento-processual contratada; false mostra o olho do DataJud bloqueado e o monitoring vem false.
+        cadence: { $ref: '#/components/schemas/DataJudMonitorCadence' }
+        lastCheck:
+          description: Ultima consulta concluida ao DataJud (process-monitoring-sprints.md, Sprint 4); null antes da primeira.
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required: [status, checkedAt]
+              properties:
+                status: { type: string, enum: [success, not_found, restricted, rate_limited, timeout, provider_unavailable, failed] }
+                checkedAt: { type: string, format: date-time }
+        nextCheckAt: { type: [string, 'null'], format: date-time }
+    CardProcessMovements:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, description, occurredAt, isNew]
+            properties:
+              id: { type: string, format: uuid }
+              description: { type: string }
+              occurredAt: { type: [string, 'null'], format: date-time }
+              isNew: { type: boolean, description: Detected after the first query (not part of the baseline). }
+              djenLookup: { type: boolean, description: Movement usually generates a DJEN communication and has a date (Sprint 9). }
+    CardMonitoringMutation:
+      type: object
+      additionalProperties: false
+      required: [monitoring, monitorId]
+      properties:
+        monitoring: { type: boolean }
+        monitorId: { type: [string, 'null'], format: uuid }
+        cadence: { $ref: '#/components/schemas/DataJudMonitorCadence' }
+    SetCardMonitoringRequest:
+      type: object
+      additionalProperties: false
+      required: [monitor]
+      properties:
+        monitor: { type: boolean }
+    SetCardMonitoringCadenceRequest:
+      type: object
+      additionalProperties: false
+      required: [cadence]
+      properties:
+        cadence: { $ref: '#/components/schemas/DataJudMonitorCadence' }
+    DataJudMonitorCadence:
+      type: string
+      enum: [daily, weekly, biweekly, monthly]

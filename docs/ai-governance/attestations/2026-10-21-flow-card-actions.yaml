@@ -1,0 +1,128 @@
+schema_version: 1.0.0
+execution_id: 20261021-flow-card-actions
+date: '2026-10-21'
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: not_exposed
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+- implementations/bff-jboot-platform/src/modules/kanban/actions
+- implementations/bff-jboot-platform/src/modules/kanban/kanban.module.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/card-visibility.static.spec.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/components/BoardActionsSettings.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/components/CardActionButtons.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/components/BoardView.tsx
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/kanban-api.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/card-actions.ts
+- implementations/app-jboot-next-platform/src/modules/kanban/lib/card-actions.spec.ts
+- implementations/app-jboot-next-platform/src/app/(with-layout)/flow/boards/[boardId]/settings/actions
+- implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- docker/postgres/init/014_identity_flow_dev_seed.sql
+- docker/postgres/init/090_kanban_card_actions.sql
+- docker/postgres/init/091_identity_flow_card_actions.sql
+- docs/product/flow-card-actions-sprints.md
+- docs/api/flow-card-actions-openapi.yaml
+- docs/security/flow-card-actions-checklist.md
+- docs/architecture-graph/registry.yaml
+instruction_sources:
+- AGENTS.md
+- docs/AI-COMMANDS.md
+- docs/ai-commands/jboot-implement-feature.md
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+- implementations/app-jboot-next-platform/agents/platform-layout.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/platform-design-system.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: be8c1e4e99605eba8057d34a1136dc0a9b3180ab4bdad0208913f36fa1b60d85
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: d3719f73ae440d6b863e96f20a04c6d69917390f27b146d715603e18303c8538
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: fc2900c94b6af8dfb964356ee510de39da5d7c1b88c1f0bde787f51efeef9f40
+agents:
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+- implementations/app-jboot-next-platform/agents/platform-layout.md
+skills:
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/platform-design-system.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+human_approval:
+  status: approved
+  evidence: '2026-10-21: usuario confirmou catalogo proprio categorizado, multiplas
+    acoes por coluna, fluxo completo com handlers de confirmacao no backend, nova
+    permissao de execucao, Senior/master do cliente como configuradores e preservacao
+    da branch atual. Posteriormente, usuario instruiu continuar no checkout do runtime
+    ja usado no worktree; porte para feature/flow-office-service-contract autorizado
+    sem trocar branches.'
+security_review:
+  status: passed
+  evidence:
+  - docs/security/flow-card-actions-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- 'Shared worktree backend container: typecheck, scoped ESLint, nest build passed'
+- 'Shared worktree backend full suite: 646 tests, 644 passed, 2 Gotenberg skips, zero
+  failures'
+- 'Shared worktree backend targeted tests: 27 passed, including real HTTP/PostgreSQL
+  and visibility checks'
+- 'Shared worktree frontend container: type-check, 137 tests and webpack production
+  build passed'
+- Shared worktree make ai-check passed, including API and Architecture Graph with
+  zero errors
+- Migrations renumbered to 090/091 to avoid existing 085/086, applied idempotently
+  to local PostgreSQL
+- Before transfer, tracked diffs and untracked files from both checkouts backed up
+  under /tmp/flow-actions-runtime-transfer
+- Existing office-service-contract source/package/lock changes preserved; no unrelated
+  root Drive changes ported
+- Platform processes restarted from same worktree with inherited environment, ports
+  8010 and 3002; Identity unchanged
+- 'Runtime checks: API health 200, actions endpoint 401 without token, office-service-contract
+  endpoint 401 without token, actions page 200'
+- 'Branches unchanged: root codex/juridico-flow-resume and runtime feature/flow-office-service-contract;
+  git diff --check passed'
+result: 'Requested runtime checkout transfer and activation completed. Both features
+  are present in the shared runtime. Record remains partial for terminal sprint closure:
+  authenticated visual smoke pending, initially dirty working trees preserved without
+  commit/push. Initial root Drive test failures are not present in the shared-worktree
+  suite.'

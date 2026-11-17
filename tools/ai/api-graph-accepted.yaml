@@ -1,0 +1,335 @@
+schema_version: "1.0.0"
+
+# Achados aceitos do grafo de contratos HTTP (tools/ai/api-graph.py).
+# Entrada aceita continua no relatorio, mas nao reprova o gate.
+# Entrada que deixa de corresponder a um achado real reprova o gate (stale_accepted_finding):
+# ao construir o consumidor ou remover o codigo, remova a entrada no mesmo change.
+# Categorias: template (codigo de template/scaffold), planned (trabalho planejado), infra (probe operacional).
+
+accepted:
+  # --- template
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/auth/authSlice.ts
+    method: POST
+    path: "/api/auth/login"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/auth/authSlice.ts
+    method: POST
+    path: "/api/auth/register"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/settings/settingsSlice.ts
+    method: GET
+    path: "/api/users/:param/settings"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/settings/settingsSlice.ts
+    method: PUT
+    path: "/api/users/:param/settings"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/users/usersSlice.ts
+    method: GET
+    path: "/api/users"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/users/usersSlice.ts
+    method: POST
+    path: "/api/users"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/users/usersSlice.ts
+    method: DELETE
+    path: "/api/users/:param"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-identity-admin/src/slices/users/usersSlice.ts
+    method: PUT
+    path: "/api/users/:param"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/auth/authSlice.ts
+    method: POST
+    path: "/api/auth/login"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/auth/authSlice.ts
+    method: POST
+    path: "/api/auth/register"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/settings/settingsSlice.ts
+    method: GET
+    path: "/api/users/:param/settings"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/settings/settingsSlice.ts
+    method: PUT
+    path: "/api/users/:param/settings"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/users/usersSlice.ts
+    method: GET
+    path: "/api/users"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/users/usersSlice.ts
+    method: POST
+    path: "/api/users"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/users/usersSlice.ts
+    method: DELETE
+    path: "/api/users/:param"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: orphan_call
+    category: template
+    file: implementations/app-jboot-next-platform/src/slices/users/usersSlice.ts
+    method: PUT
+    path: "/api/users/:param"
+    reason: "Thunk demonstrativo do template Velzon: o reducer esta registrado em slices/index.ts, mas o thunk nao e importado; o app nao tem route handler nem rewrite para /api/*."
+  - kind: unconsumed_route
+    category: template
+    service: svc-jboot-fiscal
+    method: GET
+    path: "/"
+    reason: "Rota de boas-vindas do scaffold Laravel (routes/web.php); nao faz parte da API fiscal."
+  # --- planned
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: GET
+    path: "/admin/audit-events"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: GET
+    path: "/admin/clients/:param/entitlements"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: POST
+    path: "/admin/clients/:param/entitlements"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: DELETE
+    path: "/admin/clients/:param/entitlements/:param/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: PATCH
+    path: "/admin/clients/:param/entitlements/:param/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: GET
+    path: "/admin/clients/:param/memberships"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: POST
+    path: "/admin/clients/:param/memberships"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: DELETE
+    path: "/admin/clients/:param/memberships/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: PATCH
+    path: "/admin/clients/:param/memberships/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: GET
+    path: "/admin/database-refs"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: POST
+    path: "/admin/database-refs"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: DELETE
+    path: "/admin/database-refs/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-identity
+    method: PATCH
+    path: "/admin/database-refs/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-identity/PROJECT_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: GET
+    path: "/juridico/datajud/acompanhamentos/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: GET
+    path: "/juridico/pje/tribunais"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: implementations/bff-jboot-platform/modules/juridico/MODULE_CONTRACT.md
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: GET
+    path: "/juridico/prazos/calendarios/:param/entradas"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: POST
+    path: "/pdv/admin/inventory-imports"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: GET
+    path: "/pdv/admin/inventory-imports/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: GET
+    path: "/pdv/admin/operators"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: POST
+    path: "/pdv/admin/operators"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: DELETE
+    path: "/pdv/admin/operators/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: bff-jboot-platform
+    method: PATCH
+    path: "/pdv/admin/operators/:param"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/pdv-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: svc-jboot-fiscal
+    method: GET
+    path: "/api/v1/documentos"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+  - kind: unconsumed_route
+    category: planned
+    service: svc-jboot-fiscal
+    method: POST
+    path: "/api/v1/documentos/:param/cce"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/fiscal-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: svc-jboot-fiscal
+    method: GET
+    path: "/api/v1/documentos/:param/status"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/fiscal-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: svc-jboot-fiscal
+    method: POST
+    path: "/api/v1/numeracao/inutilizacao"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+    reference: docs/api/fiscal-sprint-1-openapi.yaml
+  - kind: unconsumed_route
+    category: planned
+    service: wrk-jboot-juridico
+    method: POST
+    path: "/eproc/consult"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+  - kind: unconsumed_route
+    category: planned
+    service: wrk-jboot-juridico
+    method: POST
+    path: "/eproc/consult-batch"
+    reason: "Rota exposta aguardando consumidor planejado (decisao humana em 2026-09-17)."
+  # --- infra
+  - kind: unconsumed_route
+    category: infra
+    service: bff-jboot-identity
+    method: GET
+    path: "/health"
+    reason: "Probe operacional de liveness/readiness; o consumidor e a infraestrutura (orquestrador/monitoramento), nao codigo do monorepo."
+  - kind: unconsumed_route
+    category: infra
+    service: bff-jboot-platform
+    method: GET
+    path: "/health"
+    reason: "Probe operacional de liveness/readiness; o consumidor e a infraestrutura (orquestrador/monitoramento), nao codigo do monorepo."
+  - kind: unconsumed_route
+    category: infra
+    service: svc-jboot-fiscal
+    method: GET
+    path: "/api/health"
+    reason: "Probe operacional de liveness/readiness; o consumidor e a infraestrutura (orquestrador/monitoramento), nao codigo do monorepo."
+  - kind: unconsumed_route
+    category: infra
+    service: svc-jboot-juridico-data
+    method: GET
+    path: "/health"
+    reason: "Probe operacional de liveness/readiness; o consumidor e a infraestrutura (orquestrador/monitoramento), nao codigo do monorepo."
+  - kind: unconsumed_route
+    category: infra
+    service: svc-jboot-juridico-data
+    method: GET
+    path: "/ready"
+    reason: "Probe operacional de liveness/readiness; o consumidor e a infraestrutura (orquestrador/monitoramento), nao codigo do monorepo."

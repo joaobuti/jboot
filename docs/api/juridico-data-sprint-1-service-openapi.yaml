@@ -1,0 +1,387 @@
+openapi: 3.1.0
+info:
+  title: JBoot Juridico Data Internal API
+  version: 0.1.0
+  summary: Internal stateless API for official judicial data providers.
+servers:
+  - url: http://localhost:8030
+security:
+  - serviceBearer: []
+tags:
+  - name: Operational
+  - name: DataJud
+x-jboot-boundary:
+  visibility: internal_only
+  caller_allowlist:
+    - platform-api
+  user_jwt_forwarding: forbidden
+  tenant_payload: forbidden
+  persistence: none
+paths:
+  /health:
+    get:
+      tags: [Operational]
+      security: []
+      summary: Process liveness.
+      responses:
+        '200':
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /ready:
+    get:
+      tags: [Operational]
+      security: []
+      summary: Configuration readiness without calling DataJud.
+      responses:
+        '200':
+          description: Required configuration is available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Required configuration is missing.
+  /v1/datajud/tribunais:
+    get:
+      tags: [DataJud]
+      summary: List the allowlisted DataJud tribunals.
+      responses:
+        '200':
+          description: Supported tribunals.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tribunal'
+                  total:
+                    type: integer
+                    minimum: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /v1/datajud/processos/consulta:
+    post:
+      tags: [DataJud]
+      summary: Query one public process by CNJ number.
+      description: >
+        The server derives every upstream URL from its tribunal allowlist. It
+        never accepts a URL, host, index name, client_id or database_ref.
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/QueryMode'
+        - $ref: '#/components/parameters/Traceparent'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalProcessQueryRequest'
+      responses:
+        '200':
+          description: Normalized public process.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalProcessQueryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Caller unauthorized or process restricted by secrecy.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '413':
+          description: Request body exceeds the internal service limit.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/ProviderUnavailable'
+        '504':
+          $ref: '#/components/responses/ProviderTimeout'
+components:
+  securitySchemes:
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Identity-issued service JWT with audience svc:juridico-data.
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    QueryMode:
+      name: X-JBoot-Query-Mode
+      in: header
+      required: false
+      description: >-
+        `background` para acompanhamento em segundo plano (ADR 021, Sprint 4 de
+        process-monitoring-sprints.md): uma tentativa, com
+        `JURIDICO_DATA_BACKGROUND_REQUEST_TIMEOUT_SECONDS` (padrao 60 s).
+        Ausente ou `interactive`: limite e novas tentativas da consulta de tela.
+      schema:
+        type: string
+        enum: [interactive, background]
+        default: interactive
+    Traceparent:
+      name: traceparent
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+  schemas:
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          enum: [ok, not_ready]
+        service:
+          type: string
+          const: juridico-data
+    Tribunal:
+      type: object
+      additionalProperties: false
+      required: [sigla, nome]
+      properties:
+        sigla:
+          type: string
+          pattern: '^[A-Z0-9-]{2,16}$'
+        nome:
+          type: string
+          maxLength: 160
+    InternalProcessQueryRequest:
+      type: object
+      additionalProperties: false
+      required: [numeroProcesso]
+      properties:
+        numeroProcesso:
+          type: string
+          minLength: 20
+          maxLength: 25
+          description: Formatted CNJ number or its 20 digits.
+        tribunal:
+          type: [string, 'null']
+          pattern: '^[A-Z0-9-]{2,16}$'
+    InternalProcessQueryResponse:
+      type: object
+      additionalProperties: false
+      required: [requestId, source, capturedAt, process]
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        source:
+          type: string
+          const: datajud
+        capturedAt:
+          type: string
+          format: date-time
+        process:
+          $ref: '#/components/schemas/Process'
+    Process:
+      type: object
+      additionalProperties: false
+      required:
+        - numeroProcesso
+        - tribunal
+        - nivelSigilo
+        - assuntos
+        - partes
+        - movimentacoes
+      properties:
+        numeroProcesso:
+          type: string
+        tribunal:
+          type: string
+        grau:
+          type: [string, 'null']
+        dataAjuizamento:
+          type: [string, 'null']
+          format: date-time
+        dataUltimaAtualizacao:
+          type: [string, 'null']
+          format: date-time
+        nivelSigilo:
+          type: integer
+          const: 0
+        classe:
+          anyOf:
+            - $ref: '#/components/schemas/CodeName'
+            - type: 'null'
+        orgaoJulgador:
+          anyOf:
+            - $ref: '#/components/schemas/CodeName'
+            - type: 'null'
+        assuntos:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CodeName'
+        partes:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Party'
+        movimentacoes:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/Movement'
+    CodeName:
+      type: object
+      additionalProperties: false
+      required: [codigo, nome]
+      properties:
+        codigo:
+          type: [string, integer, 'null']
+        nome:
+          type: string
+          maxLength: 500
+    Party:
+      type: object
+      additionalProperties: false
+      required: [nome, tipo, polo]
+      properties:
+        nome:
+          type: string
+          maxLength: 500
+        tipo:
+          type: string
+          maxLength: 120
+        polo:
+          type: [string, 'null']
+          maxLength: 80
+    Movement:
+      type: object
+      additionalProperties: false
+      required: [codigo, nome, dataHora, complementos]
+      properties:
+        codigo:
+          type: [integer, 'null']
+        nome:
+          type: string
+          maxLength: 1000
+        dataHora:
+          type: [string, 'null']
+          format: date-time
+        complementos:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/MovementComplement'
+    MovementComplement:
+      type: object
+      additionalProperties: false
+      properties:
+        codigo:
+          type: [integer, string, 'null']
+        nome:
+          type: [string, 'null']
+          maxLength: 500
+        valor:
+          type: [string, 'null']
+          maxLength: 2000
+        descricao:
+          type: [string, 'null']
+          maxLength: 2000
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, requestId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+          enum:
+            - unauthorized
+            - forbidden
+            - process_restricted
+            - process_not_found
+            - validation_error
+            - request_too_large
+            - provider_rate_limited
+            - provider_unavailable
+            - provider_timeout
+        requestId:
+          type: string
+          format: uuid
+  responses:
+    Unauthorized:
+      description: Missing or invalid service token.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: Caller or audience is not allowed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Process not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: CNJ number or tribunal is invalid.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Provider rate limit reached.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ProviderUnavailable:
+      description: Provider unavailable after controlled retries.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ProviderTimeout:
+      description: Provider timed out.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

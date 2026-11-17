@@ -1,0 +1,67 @@
+schema_version: "1.0.0"
+execution_id: "20261014-ai-gateway-foundation-v1"
+date: "2026-10-14"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-ai-gateway
+target_module: none
+scope_paths:
+  - implementations/svc-jboot-ai-gateway
+  - docker/postgres/init/071_ai_gateway_foundation.sql
+  - docker-compose.yml
+  - tools/code-up.sh
+  - tools/code-down.sh
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - docs/security/ai-gateway-foundation-security-checklist.md
+  - tools/ai/api-graph.yaml
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+instruction_set_sha256: "6ce29d51ee74ab994d56f61516aab11725a9b7685dc01d39e296e129e849e73e"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "210e3f284f7b7442d926f374c6d81dad70cd64c60facea26106520f250d75c0e"
+agents:
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+skills:
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/dev-runtime-profile/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: O usuario confirmou a unidade independente NestJS, o modelo de agente versionado no JBoot e autorizou iniciar e avancar a implementacao.
+security_review:
+  status: passed
+  evidence:
+    - isolamento por client_id e owner_identity_id em todas as queries
+    - segredo write-only cifrado com AES-256-GCM e AAD contextual
+    - catalogo fechado com somente provider fake executavel
+    - revogacao remove todo o envelope cifrado e auditoria nao registra conteudo
+    - throttling, limite de lista, DTO estrito e scope dedicado
+    - npm audit sem vulnerabilidades
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 6 testes passaram dentro do container, incluindo PostgreSQL real
+  - type-check, lint e build passaram dentro do container
+  - health e readiness responderam com sucesso
+  - API Contract Graph gate passou sem erros
+  - npm audit --omit=dev reportou zero vulnerabilidades
+result: >-
+  Fundacao independente, runtime local, catalogo de providers, cofre BYOK,
+  teste fake, revogacao criptografica e auditoria estao implementados. Sprint 11
+  permanece parcial: agentes, ledger/executor e UI ainda nao foram implementados;
+  providers reais continuam bloqueados por decisoes de dados e operacao. O
+  Architecture Graph registry/gate ainda nao esta disponivel e nao e declarado sincronizado.

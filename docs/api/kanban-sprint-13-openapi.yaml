@@ -1,0 +1,101 @@
+openapi: 3.1.0
+info:
+  title: Flow - Envios das automacoes de e-mail
+  version: 1.0.0
+  description: |
+    Sprint 13 (docs/product/kanban-sprints.md). Outbox das automacoes de e-mail
+    (`kanban_automation_dispatch_log`): leitura operacional e reprocessamento de
+    falha terminal. So `flow:admin`; a lista mostra apenas cards visiveis ao
+    usuario e reprocessar exige ver o card e ser `board_admin` do quadro.
+servers:
+  - url: https://apinode.jboot.com.br
+    description: bff-jboot-platform
+tags:
+  - name: kanban-automation-dispatches
+security:
+  - bearerAuth: []
+paths:
+  /kanban/automation-dispatches:
+    get:
+      tags: [kanban-automation-dispatches]
+      summary: Resumo do outbox do tenant e envios pendentes ou com falha
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Sem filtro devolve falhas e pendentes; `pending` inclui `processing`.
+          schema: { type: string, enum: [failed, pending] }
+      responses:
+        '200':
+          description: Resumo (so contagens do tenant) e ate 200 linhas de cards visiveis
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmailDispatchList' }
+        '403': { description: Sem `flow:admin` }
+  /kanban/automation-dispatches/{dispatchId}/retry:
+    post:
+      tags: [kanban-automation-dispatches]
+      summary: Devolve uma falha terminal a fila com tentativas zeradas
+      description: Auditado como `kanban_automation_dispatch_retried` (ids da linha e do card).
+      parameters:
+        - name: dispatchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Envio devolvido a fila
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [pending] }
+        '403': { description: Sem `flow:admin` ou sem `board_admin` no quadro do card }
+        '404': { description: '`automation_dispatch_not_found` ou card fora do alcance do usuario' }
+        '409': { description: '`automation_dispatch_not_failed`: so falha terminal pode ser reprocessada' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    EmailDispatchStatus:
+      type: string
+      enum: [pending, processing, sent, skipped, failed]
+    EmailDispatchList:
+      type: object
+      required: [summary, items, maxAttempts]
+      properties:
+        maxAttempts: { type: integer, description: Tentativas antes da falha terminal (5) }
+        summary:
+          type: object
+          required: [pending, processing, failed, oldestPendingAt]
+          properties:
+            pending: { type: integer }
+            processing: { type: integer }
+            failed: { type: integer }
+            oldestPendingAt: { type: [string, 'null'], format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, status, attemptCount, lastError, nextAttemptAt, createdAt, updatedAt, boardId, boardName, columnName, cardId, cardTitle, triggerType]
+            properties:
+              id: { type: string, format: uuid }
+              status: { $ref: '#/components/schemas/EmailDispatchStatus' }
+              attemptCount: { type: integer }
+              lastError:
+                type: [string, 'null']
+                description: Erro do SMTP sem endereco de e-mail, ate 200 caracteres, ou codigo interno
+              nextAttemptAt: { type: string, format: date-time }
+              createdAt: { type: string, format: date-time }
+              updatedAt: { type: string, format: date-time }
+              boardId: { type: string, format: uuid }
+              boardName: { type: string }
+              columnName: { type: string }
+              cardId: { type: string, format: uuid }
+              cardTitle: { type: string }
+              triggerType:
+                type: string
+                enum: [column_entered, column_left, due_date_approaching, card_stale, juridico_process_moved, djen_publication_received]

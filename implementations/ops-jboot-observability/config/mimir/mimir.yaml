@@ -1,0 +1,72 @@
+target: all,alertmanager,overrides-exporter
+multitenancy_enabled: true
+
+server:
+  http_listen_port: 9009
+  log_level: info
+
+blocks_storage:
+  backend: s3
+  s3:
+    endpoint: observability-minio:9000
+    access_key_id: ${OBS_MINIO_ROOT_USER}
+    secret_access_key: ${OBS_MINIO_ROOT_PASSWORD}
+    bucket_name: jboot-observability-mimir-blocks
+    insecure: true
+  tsdb:
+    dir: /data/ingester
+  bucket_store:
+    sync_dir: /data/bucket-sync
+
+compactor:
+  data_dir: /data/compactor
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+store_gateway:
+  sharding_ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+ruler_storage:
+  backend: s3
+  s3:
+    endpoint: observability-minio:9000
+    access_key_id: ${OBS_MINIO_ROOT_USER}
+    secret_access_key: ${OBS_MINIO_ROOT_PASSWORD}
+    bucket_name: jboot-observability-mimir-ruler
+    insecure: true
+
+ruler:
+  rule_path: /data/ruler
+  alertmanager_url: http://127.0.0.1:9009/alertmanager
+
+alertmanager_storage:
+  backend: s3
+  s3:
+    endpoint: observability-minio:9000
+    access_key_id: ${OBS_MINIO_ROOT_USER}
+    secret_access_key: ${OBS_MINIO_ROOT_PASSWORD}
+    bucket_name: jboot-observability-mimir-alertmanager
+    insecure: true
+
+alertmanager:
+  data_dir: /data/alertmanager
+  fallback_config_file: /etc/mimir/alertmanager-fallback.yaml
+  external_url: http://localhost:9009/alertmanager
+
+limits:
+  compactor_blocks_retention_period: 9504h
+  max_global_series_per_user: 200000
+  max_label_names_per_series: 40
+  max_label_name_length: 128
+  max_label_value_length: 1024
+
+usage_stats:
+  enabled: false
+

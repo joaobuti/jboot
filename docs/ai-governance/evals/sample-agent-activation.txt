@@ -1,0 +1,13 @@
+Agent Activation:
+  project: implementations/bff-jboot-platform
+  module: modules/pdv
+  using_agent:
+    - implementations/bff-jboot-platform/agents/backend-node-typescript.md: padrao backend platform
+    - implementations/bff-jboot-platform/modules/pdv/agents/pdv-domain.md: dominio PDV
+  using_skill:
+    - implementations/bff-jboot-platform/skills/nest-module-pattern.md: estrutura NestJS
+    - implementations/bff-jboot-platform/modules/pdv/skills/pdv-crud.md: CRUD PDV
+  referenced_only:
+    - docs/product/pdv-sprint-1-gate.md: gate da sprint
+  not_using:
+    - implementations/app-jboot-next-platform/modules/pdv/agents/pdv-web.md: fora do backend

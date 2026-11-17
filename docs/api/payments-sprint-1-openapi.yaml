@@ -1,0 +1,404 @@
+openapi: 3.1.0
+info:
+  title: JBoot Payments Internal API
+  version: 0.3.0
+servers:
+  - url: http://localhost:8040
+paths:
+  /health:
+    get:
+      operationId: paymentsHealth
+      responses:
+        "200":
+          description: Process healthy
+  /ready:
+    get:
+      operationId: paymentsReady
+      responses:
+        "200":
+          description: Dependencies ready
+        "503":
+          description: Dependency unavailable
+  /v1/charges:
+    post:
+      operationId: createCharge
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChargeRequest"
+      responses:
+        "201":
+          description: Charge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeResponse"
+        "200":
+          description: Idempotent replay
+        "409":
+          description: Idempotency conflict
+        "422":
+          description: Invalid command or capability disabled
+  /v1/charges/{chargeId}:
+    get:
+      operationId: getCharge
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: chargeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Tenant-owned charge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeResponse"
+        "404":
+          description: Charge not found for tenant
+  /v1/charges/{chargeId}/verify:
+    post:
+      operationId: verifyCharge
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/ChargeId"
+      responses:
+        "200":
+          description: Current charge after controlled provider verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeResponse"
+        "503":
+          description: Provider unavailable; no retry is implied
+  /v1/provider-connections/infinitepay:
+    get:
+      operationId: getInfinitePayConnection
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Safe provider connection metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderConnectionResponse"
+        "422":
+          description: Connection is not configured
+    put:
+      operationId: configureInfinitePayConnection
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigureInfinitePayRequest"
+      responses:
+        "200":
+          description: Connection configured and validated from approved PoC evidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderConnectionResponse"
+        "422":
+          description: Invalid connection or validation evidence
+  /v1/public/infinitepay/callback/{chargeId}:
+    get:
+      operationId: infinitePayCheckoutCallback
+      parameters:
+        - $ref: "#/components/parameters/ChargeId"
+        - {name: order_nsu, in: query, required: true, schema: {type: string}}
+        - {name: transaction_nsu, in: query, required: true, schema: {type: string}}
+        - {name: slug, in: query, required: true, schema: {type: string}}
+        - {name: capture_method, in: query, required: true, schema: {type: string, const: pix}}
+        - {name: receipt_url, in: query, required: false, schema: {type: string, format: uri}}
+      responses:
+        "200":
+          description: Callback signal recorded; payment confirmation still depends on payment_check
+          content:
+            text/html:
+              schema: {type: string}
+  /v1/public/infinitepay/webhook/{chargeId}:
+    post:
+      operationId: infinitePayWebhookSignal
+      description: Records an unauthenticated provider signal. This route never confirms a payment; only payment_check can do so.
+      parameters:
+        - $ref: "#/components/parameters/ChargeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfinitePayWebhookSignal"
+      responses:
+        "200":
+          description: Signal recorded idempotently and queued for reconciliation
+        "400":
+          description: Invalid or uncorrelated provider signal
+        "429":
+          description: Public endpoint rate limit exceeded
+  /v1/refunds:
+    get:
+      operationId: listRefunds
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant-owned audited refund workflows
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: "#/components/schemas/RefundResponse"}
+    post:
+      operationId: requestManualRefund
+      description: Opens an audited workflow. The financial refund remains a manual operation in the InfinitePay app.
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/OperatorId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RequestRefund"}
+      responses:
+        "201":
+          description: Audited refund workflow created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RefundResponse"}
+        "200":
+          description: Idempotent replay
+        "422":
+          description: Invalid request, non-received charge, or amount exceeds remaining refundable value
+  /v1/refunds/{refundId}/complete:
+    post:
+      operationId: completeManualRefund
+      description: Records the operator-confirmed result of the manual InfinitePay app operation.
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/OperatorId"
+        - name: refundId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CompleteRefund"}
+      responses:
+        "200":
+          description: Manual operation result recorded
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RefundResponse"}
+        "404":
+          description: Refund not found for tenant
+  /v1/operations/reconciliation:
+    get:
+      operationId: listPendingPixReconciliation
+      security:
+        - serviceBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant-owned PIX charges requiring operational observation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: "#/components/schemas/ReconciliationItem"}
+components:
+  securitySchemes:
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TenantId:
+      name: X-JBoot-Client-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    ChargeId:
+      name: chargeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OperatorId:
+      name: X-JBoot-Operator-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateChargeRequest:
+      type: object
+      additionalProperties: false
+      required: [consumerApplication, merchantOrderReference, amountMinor, currency, paymentMethod]
+      properties:
+        consumerApplication:
+          type: string
+          minLength: 1
+          maxLength: 64
+        merchantOrderReference:
+          type: string
+          minLength: 1
+          maxLength: 128
+        amountMinor:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          const: BRL
+        paymentMethod:
+          type: string
+          enum: [pix]
+    ChargeResponse:
+      type: object
+      additionalProperties: false
+      required: [id, consumerApplication, merchantOrderReference, amountMinor, currency, status, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        consumerApplication: {type: string}
+        merchantOrderReference: {type: string}
+        amountMinor: {type: integer}
+        currency: {type: string}
+        status:
+          type: string
+          enum: [created, awaiting_payment, verification_pending, received, pending_reconciliation, creation_outcome_unknown, failed, cancelled]
+        checkoutUrl:
+          type: string
+          format: uri
+        createdAt: {type: string, format: date-time}
+    ConfigureInfinitePayRequest:
+      type: object
+      additionalProperties: false
+      required: [publicIdentifier, validationEvidence]
+      properties:
+        publicIdentifier: {type: string, minLength: 2, maxLength: 64}
+        secretRef: {type: string, minLength: 3, maxLength: 256}
+        validationEvidence:
+          type: string
+          const: administrator_declaration_and_real_charge
+    ProviderConnectionResponse:
+      type: object
+      additionalProperties: false
+      required: [provider, publicIdentifier, status, verifiedAt, updatedAt]
+      properties:
+        provider: {type: string, const: infinitepay}
+        publicIdentifier: {type: string}
+        status: {type: string, enum: [unverified, verified, disabled]}
+        verifiedAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    InfinitePayWebhookSignal:
+      type: object
+      additionalProperties: false
+      required: [invoice_slug, amount, paid_amount, installments, capture_method, transaction_nsu, order_nsu]
+      properties:
+        invoice_slug: {type: string}
+        amount: {type: integer}
+        paid_amount: {type: integer}
+        installments: {type: integer}
+        capture_method: {type: string, const: pix}
+        transaction_nsu: {type: string}
+        order_nsu: {type: string}
+        receipt_url: {type: string, format: uri}
+        items:
+          description: Provider payload accepted for compatibility but never persisted as financial truth.
+    RequestRefund:
+      type: object
+      additionalProperties: false
+      required: [chargeId, amountMinor, reason]
+      properties:
+        chargeId: {type: string, format: uuid}
+        amountMinor: {type: integer, minimum: 1}
+        reason: {type: string, minLength: 3, maxLength: 500}
+    CompleteRefund:
+      type: object
+      additionalProperties: false
+      required: [succeeded, resolutionNote]
+      properties:
+        succeeded: {type: boolean}
+        resolutionNote: {type: string, minLength: 3, maxLength: 500}
+    RefundResponse:
+      type: object
+      additionalProperties: false
+      required: [id, chargeId, amountMinor, status, reason, operatorIdentityId, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        chargeId: {type: string, format: uuid}
+        amountMinor: {type: integer}
+        status: {type: string, enum: [requested, succeeded, failed]}
+        reason: {type: string}
+        operatorIdentityId: {type: string, format: uuid}
+        resolutionNote: {type: string}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        completedAt: {type: string, format: date-time}
+    ReconciliationItem:
+      type: object
+      additionalProperties: false
+      required: [chargeId, merchantReference, amountMinor, status, verificationAttempts, createdAt]
+      properties:
+        chargeId: {type: string, format: uuid}
+        merchantReference: {type: string}
+        amountMinor: {type: integer}
+        status: {type: string, enum: [verification_pending, pending_reconciliation, creation_outcome_unknown]}
+        verificationAttempts: {type: integer, minimum: 0}
+        nextVerificationAt: {type: string, format: date-time}
+        lastVerificationAt: {type: string, format: date-time}
+        lastVerificationError: {type: string}
+        createdAt: {type: string, format: date-time}

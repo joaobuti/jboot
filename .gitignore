@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+node_modules
+.pnpm-store/
+.deploy-build/
+vendor/
+**/composer.phar
+.venv/
+venv/
+**/node_modules/
+**/node_modules
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+build/
+public/build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+**/.next/
+**/dist/
+**/build/
+**/out/
+**/.pytest_cache/
+**/bootstrap/cache/*.php
+!**/bootstrap/cache/.gitignore
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs and runtime
+*.log
+logs/
+tmp/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+*.Zone.Identifier
+
+# Local agent/session metadata
+.codex
+
+# Local/reference templates
+Next-TS/
+implementations/templates/
+
+# AI runtime local state
+.claude/settings.json
+.claude/settings.local.json
+.claude/memory/
+.codex.d/local/
+.cursor/local/
+
+# Projeto de marketing/Instagram: local, nao versionado (decisao do usuario, 2026-08-26).
+# Diretorio inteiro, incluindo contratos, agent e migration -- foram consolidados
+# ali dentro justamente para nao ficar nada espalhado em pasta compartilhada.
+# Ver implementations/wrk-jboot-marketing/README.md.
+implementations/wrk-jboot-marketing/
+
+# Template Velzon completo: fora da copia publica (licenca).
+implementations/templates/original/

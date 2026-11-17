@@ -1,0 +1,67 @@
+schema_version: "1.0.0"
+execution_id: "20260810-ai-first-engineering-harness-v1"
+date: "2026-08-10"
+mode: governance
+status: success
+runtime: codex
+model: gpt-5
+revision: resolved_by_ci
+target_project: repository-root
+target_module: null
+scope_paths:
+  - AGENTS.md
+  - .codex.d
+  - .claude
+  - .cursor
+  - .github/copilot-instructions.md
+  - docs/ai-architecture.md
+  - docs/ai-governance/conformance
+  - docs/ai-governance/attestations
+  - docs/ai-governance/evals/scenarios.yaml
+  - docs/ai-governance/evidence
+  - tools/ai/behavioral-evals.py
+  - tools/ai/governance.py
+instruction_sources:
+  - AGENTS.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/ai-architecture.md
+  - docs/decision-principles.md
+  - docs/ai-governance/conformance/ai-first.yaml
+  - docs/ai-governance/conformance/AI_FIRST_CONFORMANCE.md
+  - docs/ai-governance/attestations/README.md
+  - docs/ai-governance/evals/scenarios.yaml
+  - docs/skills/ai-first-governance/SKILL.md
+instruction_set_sha256: "e805df56cefd1e1a7421c30597a81505b06788ee468c6335e91a82f9b14f8fc1"
+context_sha256: {}
+agents:
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+skills:
+  - docs/skills/ai-first-governance/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    usuario aprovou explicitamente formalizar o AI-first Engineering Harness como
+    fonte canonica para qualquer agente de IA que atue no projeto
+security_review:
+  status: not_applicable
+  evidence:
+    - mudanca restrita a governanca, arquitetura, adapters e harness de validacao
+    - nenhum endpoint, autenticacao, autorizacao, query, storage, dependencia ou segredo alterado
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - make ai-adapters
+  - make ai-context
+  - make ai-conformance
+  - make ai-evidence
+result: >-
+  AI-first Engineering Harness formalizado como camada canonica de execucao,
+  validacao, evidencia e controle para agentes. MCP permanece como adapter
+  opcional futuro, sem substituir contratos executaveis nem o runtime de produto.

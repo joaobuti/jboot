@@ -1,0 +1,123 @@
+schema_version: 1.0.0
+execution_id: 20261106-flow-petition-monitoring
+date: '2026-11-06'
+mode: implementation
+status: partial
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+- docker/postgres/init/118_kanban_petition_monitoring.sql
+- docker/postgres/init/119_juridico_flow_exports_origin.sql
+- implementations/bff-jboot-platform/src/modules/kanban/actions
+- implementations/bff-jboot-platform/src/modules/kanban/initial-petitions
+- implementations/bff-jboot-platform/src/modules/kanban/kanban.module.ts
+- implementations/bff-jboot-platform/src/modules/kanban/shared/card-visibility.static.spec.ts
+- implementations/bff-jboot-platform/src/modules/domain-integrations
+- implementations/bff-jboot-platform/src/modules/juridico/datajud
+- implementations/bff-jboot-platform/src/modules/shared/documents
+- implementations/app-jboot-next-platform/src/modules/kanban
+- implementations/wrk-jboot-juridico/src/workflows/datajud_monitor_workflow.py
+- implementations/wrk-jboot-juridico/tests/test_datajud_monitor_workflow.py
+- implementations/bff-jboot-platform/AI_CONTEXT.md
+- implementations/app-jboot-next-platform/AI_CONTEXT.md
+- implementations/wrk-jboot-juridico/AI_CONTEXT.md
+- implementations/bff-jboot-platform/modules/kanban
+- implementations/app-jboot-next-platform/modules/kanban
+- implementations/bff-jboot-platform/modules/domain-integrations
+- implementations/wrk-jboot-juridico/PROJECT_CONTRACT.md
+- docs/product/flow-card-actions-sprints.md
+- docs/api/flow-card-actions-openapi.yaml
+- docs/api/flow-initial-petitions-openapi.yaml
+- docs/security/flow-card-actions-checklist.md
+- docs/architecture-graph/registry.yaml
+- docs/ai-governance/attestations/2026-11-06-flow-petition-monitoring.yaml
+- docs/ai-governance/evidence
+instruction_sources:
+- AGENTS.md
+- docs/AI-COMMANDS.md
+- docs/ai-commands/jboot-implement-feature.md
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/app-jboot-next-platform/modules/kanban/MODULE_CONTRACT.md
+- implementations/bff-jboot-platform/modules/domain-integrations/MODULE_CONTRACT.md
+- implementations/wrk-jboot-juridico/PROJECT_CONTRACT.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/bff-jboot-platform/modules/domain-integrations/agents/domain-integrations.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+- implementations/wrk-jboot-juridico/agents/scraping-worker.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/modules/domain-integrations/skills/domain-flow-import.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: 7516d843630da7263293df5c41712abaa4e409fe0e751e4c3e66068886a8b6f9
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: 2354c034c73937635715515239f0f4035ccaaafc4cb7616aad5a9ff10a96d573
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: e84d3ee9604529287cf04d96fe4c741570dfbfecd966522fef0bc764ab4aee48
+  implementations/bff-jboot-platform/modules/domain-integrations/AI_CONTEXT.md: f91f63320146048a7fe59dbe774d7758ee5a3be59905b6aae985fed214ad9351
+  implementations/wrk-jboot-juridico/AI_CONTEXT.md: dce4d7c8eb6a924851db9fe759708fe979ebe004019d1f4a71a233bce48e81bd
+agents:
+- docs/agents/orchestration/product-owner.md
+- docs/agents/orchestration/product-engineer.md
+- docs/agents/orchestration/architect.md
+- docs/agents/orchestration/ui-ux.md
+- implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+- implementations/bff-jboot-platform/modules/domain-integrations/agents/domain-integrations.md
+- implementations/app-jboot-next-platform/modules/kanban/agents/kanban-board-ui.md
+- implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+- implementations/app-jboot-next-platform/agents/backend-contract-client.md
+- implementations/wrk-jboot-juridico/agents/scraping-worker.md
+skills:
+- docs/skills/ai-first-governance/SKILL.md
+- docs/skills/security-checklist/SKILL.md
+- docs/skills/dev-runtime-profile/SKILL.md
+- implementations/bff-jboot-platform/modules/kanban/skills/kanban-board-crud.md
+- implementations/bff-jboot-platform/modules/domain-integrations/skills/domain-flow-import.md
+- implementations/bff-jboot-platform/skills/nest-module-pattern.md
+- implementations/app-jboot-next-platform/modules/kanban/skills/kanban-board-ui.md
+- implementations/app-jboot-next-platform/skills/next-module-pattern.md
+- implementations/app-jboot-next-platform/skills/api-client.md
+human_approval:
+  status: approved
+  evidence: '2026-11-05/06: usuario confirmou CNJ na peticao aprovada, registro por board_admin ou responsavel,
+    um card por numero CNJ no tenant com aviso e link, acao Monitorar escondida sem peticao elegivel,
+    envio como card novo para board escolhido (criar board so administrador), monitor diario automatico,
+    card de origem so com evento, correcao de numero fora da sprint, branch nova a partir da main e a
+    arquitetura proposta (aprovada em 2026-11-06).'
+security_review:
+  status: passed
+  evidence:
+  - docs/security/flow-card-actions-checklist.md
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+- 'Worker: regression test with Temporal time-skipping fails without the fix and passes with it; pyright
+  0 errors (container)'
+- 'BFF container: typecheck, scoped ESLint; full suite 915 tests, 913 passed, 2 Gotenberg skips, zero
+  failures'
+- 'BFF PostgreSQL tests: CNJ registration, per-tenant uniqueness (petition, DataJud card, other tenant),
+  CHECK constraint, visibleCardScope on availability, idempotent send'
+- 'Frontend container: type-check, ESLint (kanban module), 191 vitest tests and production build passed'
+- flow_petition link upsert SQL verified on local juridico database inside a rolled-back transaction
+- Migrations 118/119 applied to local dev PostgreSQL (additive)
+- make ai-api-graph-gate and make ai-architecture-graph-gate passed (0 errors)
+result: 'Sprint 2 implemented on feature/flow-petition-monitoring from main and validated in container.
+  Partial: authenticated runtime smoke and a real DataJud movement reaching the monitoring card are pending.
+  No push/merge.'

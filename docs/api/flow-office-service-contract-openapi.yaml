@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Flow - Contrato de servicos por escritorio
+  version: 2.0.0
+  description: |
+    docs/product/flow-office-service-contract-sprints.md. Um modelo por escritorio, versionado.
+    Desde a Sprint 3 (ADR 019, decisao 14) o modelo e o `.docx` do escritorio, enviado por upload; as
+    versoes HTML do editor Quill (Sprint 1) ficam so como historico e o `PUT` do HTML saiu.
+    Somente `flow:admin`; escritorio de outro tenant responde 404.
+servers:
+  - url: https://apinode.jboot.com.br
+    description: bff-jboot-platform
+security:
+  - bearerAuth: []
+tags:
+  - name: kanban-office-service-contract
+paths:
+  /kanban/offices/{officeId}/service-contract:
+    parameters:
+      - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      tags: [kanban-office-service-contract]
+      summary: Versao atual e historico do contrato do escritorio
+      responses:
+        '200': { description: Contrato, content: { application/json: { schema: { $ref: '#/components/schemas/ServiceContract' } } } }
+        '403': { description: Sem flow:admin }
+        '404': { description: office_not_found }
+  /kanban/offices/{officeId}/service-contract/versions:
+    parameters:
+      - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      tags: [kanban-office-service-contract]
+      summary: Envia o .docx do kit; arquivo diferente do atual cria a versao seguinte
+      description: |
+        Validacao em worker thread, com falha fechada: limites anti zip-bomb, pacote Word sem macro,
+        OLE/ActiveX ou vinculo externo, ao menos uma tag, blocos `[[SE_X]]`/`[[FIM_SE_X]]` abertos e
+        fechados sem aninhamento e tags `_1` de contrato dentro de linha de tabela. Marcas de genero e
+        plural nao reconhecidas e tags mal escritas viram aviso. Auditado como
+        `kanban_office_service_contract_saved` (escritorio, versao, formato, quantidade de tags, sha256).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary, description: '.docx ate 10 MB' }
+      responses:
+        '201':
+          description: Contrato apos o envio
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ServiceContract'
+                  - type: object
+                    required: [created]
+                    properties:
+                      created: { type: boolean, description: false quando o arquivo era igual ao da versao atual }
+        '403': { description: Sem flow:admin }
+        '404': { description: office_not_found }
+        '413': { description: 'template_too_large' }
+        '415': { description: 'template_content_type_not_allowed (so .docx)' }
+        '422':
+          description: |
+            service_contract_no_tags, service_contract_block_unbalanced, service_contract_block_nested,
+            service_contract_loan_row_outside_table, template_macro_forbidden,
+            template_embedded_object_forbidden, template_external_link_forbidden, template_not_word_document,
+            template_invalid ou limite do pacote excedido. `tag` e `openBlock` apontam o trecho quando houver.
+  /kanban/offices/{officeId}/service-contract/versions/{version}:
+    get:
+      tags: [kanban-office-service-contract]
+      summary: Analise de uma versao (e o HTML das versoes antigas)
+      parameters:
+        - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200': { description: Versao, content: { application/json: { schema: { $ref: '#/components/schemas/ServiceContractVersion' } } } }
+        '403': { description: Sem flow:admin }
+        '404': { description: 'office_not_found ou service_contract_version_not_found' }
+  /kanban/offices/{officeId}/service-contract/versions/{version}/download:
+    get:
+      tags: [kanban-office-service-contract]
+      summary: URL assinada (5 min) do .docx da versao
+      parameters:
+        - { name: officeId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        '200':
+          description: URL de download
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresAt]
+                properties:
+                  url: { type: string }
+                  expiresAt: { type: string, format: date-time }
+        '403': { description: Sem flow:admin }
+        '404': { description: 'office_not_found ou service_contract_version_not_found' }
+        '422': { description: 'service_contract_version_without_file (versao HTML do historico)' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  schemas:
+    ServiceContractVersionSummary:
+      type: object
+      required: [version, format, fileName, sizeBytes, tags, createdAt, createdByName]
+      properties:
+        version: { type: integer }
+        format: { type: string, enum: [html, docx], description: 'html = editor Quill (historico); docx = modelo do escritorio' }
+        fileName: { type: [string, 'null'] }
+        sizeBytes: { type: [integer, 'null'] }
+        tags: { type: array, items: { type: string, pattern: '^[A-Z0-9_]+$' } }
+        createdAt: { type: string, format: date-time }
+        createdByName: { type: [string, 'null'] }
+    KitMark:
+      type: object
+      required: [mark, count]
+      properties:
+        mark: { type: string, examples: ['portador(a)'] }
+        count: { type: integer }
+    ServiceContractVersion:
+      allOf:
+        - $ref: '#/components/schemas/ServiceContractVersionSummary'
+        - type: object
+          required: [contentHtml, invalidTags, blocks, loanRowTags, marks, warnings]
+          properties:
+            contentHtml: { type: [string, 'null'], description: So nas versoes html }
+            invalidTags: { type: array, items: { type: string }, description: Texto entre colchetes duplos fora do formato }
+            blocks: { type: array, items: { type: string }, description: 'Blocos [[SE_X]] encontrados, ex.: JEC, JEF' }
+            loanRowTags: { type: array, items: { type: string }, description: Tags _1 da linha-molde dos contratos }
+            marks:
+              oneOf:
+                - type: 'null'
+                - type: object
+                  required: [gender, plural, unrecognized]
+                  properties:
+                    gender: { type: array, items: { $ref: '#/components/schemas/KitMark' } }
+                    plural: { type: array, items: { $ref: '#/components/schemas/KitMark' } }
+                    unrecognized: { type: array, items: { $ref: '#/components/schemas/KitMark' } }
+            warnings:
+              type: array
+              items:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, description: 'loan_row_missing, block_unknown, waiver_text_missing, residence_declaration_removed, attached_template_external' }
+                  detail: { type: string }
+    ServiceContract:
+      type: object
+      required: [officeId, officeName, current, versions]
+      properties:
+        officeId: { type: string, format: uuid }
+        officeName: { type: string }
+        current: { oneOf: [{ $ref: '#/components/schemas/ServiceContractVersion' }, { type: 'null' }] }
+        versions: { type: array, items: { $ref: '#/components/schemas/ServiceContractVersionSummary' } }

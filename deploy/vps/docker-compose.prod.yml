@@ -1,0 +1,381 @@
+# Producao do ecossistema JBoot no VPS Hostinger (jboot-prod).
+# Contexto: docs/product/hostinger-vps-hosting-sprints.md (S2).
+#
+# No servidor: /opt/jboot/{docker-compose.prod.yml,Caddyfile,.env}.
+#   docker compose -f docker-compose.prod.yml --env-file .env pull
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+#
+# Regras:
+# - So o `edge` (Caddy) publica portas (80/443). Porta publicada pelo Docker
+#   passa por cima do ufw; nenhum outro servico pode ter `ports:`.
+# - Imagens vem do registry (build no CI); este arquivo nao tem `build:`.
+# - Schema do banco entra so pelo servico `migrate`
+#   (tools/db/migrate.sh); o Postgres nao monta docker-entrypoint-initdb.d.
+# - Segredos vem do .env do servidor (modelo em .env.example); nada de default
+#   de desenvolvimento: variavel obrigatoria usa `:?`.
+name: jboot
+
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+  security_opt:
+    - no-new-privileges:true
+
+
+services:
+  edge:
+    <<: *defaults
+    image: caddy:2.10.2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      JBOOT_ACME_EMAIL: ${JBOOT_ACME_EMAIL:?}
+      JBOOT_CADDY_TLS_MODE: ${JBOOT_CADDY_TLS_MODE:-}
+      JBOOT_LANDING_HOST: ${JBOOT_LANDING_HOST:?}
+      JBOOT_PORTFOLIO_HOST: ${JBOOT_PORTFOLIO_HOST:?}
+      JBOOT_APP_HOST: ${JBOOT_APP_HOST:?}
+      JBOOT_ADMIN_HOST: ${JBOOT_ADMIN_HOST:?}
+      JBOOT_AUTH_HOST: ${JBOOT_AUTH_HOST:?}
+      JBOOT_PLATFORM_API_HOST: ${JBOOT_PLATFORM_API_HOST:?}
+      JBOOT_AI_API_HOST: ${JBOOT_AI_API_HOST:?}
+      JBOOT_PAYMENTS_HOST: ${JBOOT_PAYMENTS_HOST:?}
+      JBOOT_FILES_HOST: ${JBOOT_FILES_HOST:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+    depends_on: [landing, portfolio, identity-api, identity-admin, platform-api, platform-web, ai-gateway, payments-api, minio]
+
+  postgres:
+    <<: *defaults
+    image: pgvector/pgvector:0.8.1-pg18
+    command: postgres -c shared_preload_libraries=pg_stat_statements
+    environment:
+      POSTGRES_DB: jboot
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [data]
+    shm_size: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d jboot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ${JBOOT_REGISTRY:?}/migrate:${MIGRATE_TAG:-${JBOOT_TAG:?}}
+    restart: "no"
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: jboot
+      JBOOT_PROD_SENIOR_EMAIL: ${JBOOT_PROD_SENIOR_EMAIL:?}
+      JBOOT_PROD_SENIOR_PASSWORD_HASH: ${JBOOT_PROD_SENIOR_PASSWORD_HASH:?}
+      JBOOT_PROD_DEMO_PASSWORD_HASH: ${JBOOT_PROD_DEMO_PASSWORD_HASH:?}
+    networks: [data]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  valkey:
+    <<: *defaults
+    image: valkey/valkey:8.1.4-alpine
+    command: valkey-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - valkey-data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # A MinIO deixou de distribuir imagens: tags removidas do Docker Hub e o
+  # quay.io responde 401 ate por digest (verificado em 2026-11-13). Usamos uma
+  # copia espelhada no registry do projeto da ultima imagem obtida
+  # (RELEASE.2025-09-07T16-13-09Z, digest original
+  # sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e).
+  # Substituto definitivo: ver risco na doc de sprints.
+  minio:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    volumes:
+      - minio-data:/data
+    networks: [data, edge]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    <<: *defaults
+    image: temporalio/auto-setup:1.29.1
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_SEEDS: postgres
+    networks: [data]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  gotenberg:
+    <<: *defaults
+    image: gotenberg/gotenberg:8.37.0-libreoffice@sha256:c85f019d6ae4927714507254331cc0ed72da7b619ee798e3a45de01f54372c12
+    command:
+      - gotenberg
+      - --api-enable-basic-auth
+      - --api-disable-download-from
+      - --webhook-disable
+      - --api-timeout=60s
+      - --libreoffice-max-queue-size=10
+      - --libreoffice-restart-after=10
+      - --log-level=info
+    environment:
+      GOTENBERG_API_BASIC_AUTH_USERNAME: ${JBOOT_PDF_CONVERTER_USER:?}
+      GOTENBERG_API_BASIC_AUTH_PASSWORD: ${JBOOT_PDF_CONVERTER_PASSWORD:?}
+    networks: [pdf]
+    cpus: 1.0
+    mem_limit: 1g
+    pids_limit: 256
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+      - /home/gotenberg:size=64m,uid=1001,gid=1001
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  landing:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/landing:${LANDING_TAG:-${JBOOT_TAG:?}}
+    networks: [edge]
+
+  portfolio:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/portfolio:${PORTFOLIO_TAG:-${JBOOT_TAG:?}}
+    networks: [edge]
+
+  identity-api:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/identity-api:${IDENTITY_API_TAG:-${JBOOT_TAG:?}}
+    environment:
+      PORT: 8000
+      JBOOT_IDENTITY_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_identity"
+      REDIS_URL: redis://valkey:6379
+      JBOOT_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      JBOOT_IDENTITY_ISSUER: jboot-identity
+      JBOOT_IDENTITY_TRUST_PROXY: "1"
+      JBOOT_ACCESS_TOKEN_TTL_SECONDS: ${JBOOT_ACCESS_TOKEN_TTL_SECONDS:-50400}
+      JBOOT_IDENTITY_WEB_URL: https://${JBOOT_ADMIN_HOST:?}
+      JBOOT_IDENTITY_OAUTH_ISSUER_URL: https://${JBOOT_AUTH_HOST:?}
+      JBOOT_IDENTITY_OAUTH_CONSENT_URL: https://${JBOOT_APP_HOST:?}/oauth/consentimento
+      JBOOT_FLOW_CONNECTOR_RESOURCE_URL: https://${JBOOT_PLATFORM_API_HOST:?}/kanban/mcp
+      JBOOT_IDENTITY_PLATFORM_SERVICE_CLIENT_SECRET: ${JBOOT_PLATFORM_SERVICE_CLIENT_SECRET:?}
+      JBOOT_IDENTITY_JURIDICO_WORKER_SERVICE_CLIENT_SECRET: ${JBOOT_JURIDICO_WORKER_SERVICE_CLIENT_SECRET:?}
+      CORS_ORIGINS: ${CORS_ORIGINS:?}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    networks: [edge, data]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+
+  identity-admin:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/identity-admin:${IDENTITY_ADMIN_TAG:-${JBOOT_TAG:?}}
+    networks: [edge]
+
+  platform-api:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/platform-api:${PLATFORM_API_TAG:-${JBOOT_TAG:?}}
+    environment:
+      PORT: 8010
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot"
+      JBOOT_IDENTITY_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_identity"
+      JBOOT_PLATFORM_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_identity"
+      JBOOT_PDV_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_pdv"
+      JBOOT_JURIDICO_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_juridico_advocacia_dev"
+      JBOOT_KANBAN_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_kanban_demo_dev"
+      JBOOT_PROCESS_MONITORING_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_process_monitoring"
+      REDIS_URL: redis://valkey:6379
+      JBOOT_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      JBOOT_IDENTITY_ISSUER: jboot-identity
+      JBOOT_IDENTITY_SERVICE_URL: http://identity-api:8000
+      JBOOT_IDENTITY_OAUTH_ISSUER_URL: https://${JBOOT_AUTH_HOST:?}
+      JBOOT_FLOW_CONNECTOR_RESOURCE_URL: https://${JBOOT_PLATFORM_API_HOST:?}/kanban/mcp
+      JBOOT_PLATFORM_SERVICE_CLIENT_SECRET: ${JBOOT_PLATFORM_SERVICE_CLIENT_SECRET:?}
+      JBOOT_USER_PROVISIONING_HMAC_KEY: ${JBOOT_USER_PROVISIONING_HMAC_KEY:?}
+      JBOOT_AI_GATEWAY_SERVICE_URL: http://ai-gateway:8050
+      JBOOT_PAYMENTS_SERVICE_URL: http://payments-api:8040
+      JBOOT_JURIDICO_DATA_SERVICE_URL: http://juridico-data:8030
+      JBOOT_JURIDICO_WORKER_URL: http://juridico-worker:8020
+      JBOOT_JURIDICO_WORKER_INTERNAL_SECRET: ${JBOOT_JURIDICO_WORKER_INTERNAL_SECRET:?}
+      JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY: ${JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY:?}
+      JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY_VERSION: ${JBOOT_JURIDICO_MONITOR_ENCRYPTION_KEY_VERSION:-1}
+      JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY: ${JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY:?}
+      JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY_VERSION: ${JBOOT_JURIDICO_DATA_AUDIT_HMAC_KEY_VERSION:-1}
+      JBOOT_COMANDA_QR_SECRET: ${JBOOT_COMANDA_QR_SECRET:?}
+      JBOOT_COMANDA_SESSION_SECRET: ${JBOOT_COMANDA_SESSION_SECRET:?}
+      JBOOT_FLOW_DRIVE_ENCRYPTION_KEY: ${JBOOT_FLOW_DRIVE_ENCRYPTION_KEY:?}
+      JBOOT_FLOW_DRIVE_OAUTH_CLIENT_ID: ${JBOOT_FLOW_DRIVE_OAUTH_CLIENT_ID:-}
+      JBOOT_FLOW_DRIVE_OAUTH_CLIENT_SECRET: ${JBOOT_FLOW_DRIVE_OAUTH_CLIENT_SECRET:-}
+      JBOOT_FLOW_DRIVE_PICKER_API_KEY: ${JBOOT_FLOW_DRIVE_PICKER_API_KEY:-}
+      JBOOT_FLOW_DRIVE_PICKER_APP_ID: ${JBOOT_FLOW_DRIVE_PICKER_APP_ID:-}
+      JBOOT_PDF_CONVERTER_URL: http://gotenberg:3000
+      JBOOT_PDF_CONVERTER_USER: ${JBOOT_PDF_CONVERTER_USER:?}
+      JBOOT_PDF_CONVERTER_PASSWORD: ${JBOOT_PDF_CONVERTER_PASSWORD:?}
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: https://${JBOOT_FILES_HOST:?}
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?}
+      CORS_ORIGINS: ${CORS_ORIGINS:?}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      OTEL_SERVICE_NAME: platform-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${JBOOT_OTLP_HTTP_ENDPOINT:-}
+    networks: [edge, data, pdf, observability]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+      minio: { condition: service_healthy }
+
+  platform-web:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/platform-web:${PLATFORM_WEB_TAG:-${JBOOT_TAG:?}}
+    networks: [edge]
+
+  ai-gateway:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/ai-gateway:${AI_GATEWAY_TAG:-${JBOOT_TAG:?}}
+    environment:
+      PORT: 8050
+      AI_GATEWAY_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_ai_gateway"
+      JBOOT_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      JBOOT_IDENTITY_ISSUER: jboot-identity
+      AI_GATEWAY_ENCRYPTION_KEY_BASE64: ${AI_GATEWAY_ENCRYPTION_KEY_BASE64:?}
+      AI_GATEWAY_ENCRYPTION_KEY_VERSION: ${AI_GATEWAY_ENCRYPTION_KEY_VERSION:-1}
+      AI_GATEWAY_EXECUTION_ENABLED: ${AI_GATEWAY_EXECUTION_ENABLED:-false}
+      AI_GATEWAY_SERVICE_AUDIENCE: svc:ai-gateway
+      AI_GATEWAY_CALLER_ALLOWLIST: platform-api
+      AI_GATEWAY_ENABLED_PROVIDERS: ${AI_GATEWAY_ENABLED_PROVIDERS:-openai}
+      AI_GATEWAY_OPENAI_ALLOWED_MODELS: ${AI_GATEWAY_OPENAI_ALLOWED_MODELS:-}
+      AI_GATEWAY_OPENAI_TEXT_MODELS: ${AI_GATEWAY_OPENAI_TEXT_MODELS:-}
+      AI_GATEWAY_OPENAI_STRUCTURED_MODELS: ${AI_GATEWAY_OPENAI_STRUCTURED_MODELS:-}
+      AI_GATEWAY_ANTHROPIC_ALLOWED_MODELS: ${AI_GATEWAY_ANTHROPIC_ALLOWED_MODELS:-}
+      AI_GATEWAY_ANTHROPIC_TEXT_MODELS: ${AI_GATEWAY_ANTHROPIC_TEXT_MODELS:-}
+      AI_GATEWAY_ANTHROPIC_STRUCTURED_MODELS: ${AI_GATEWAY_ANTHROPIC_STRUCTURED_MODELS:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:?}
+    networks: [edge, data]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  payments-api:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/payments:${PAYMENTS_TAG:-${JBOOT_TAG:?}}
+    environment: &payments-env
+      PAYMENTS_PORT: 8040
+      PAYMENTS_ENVIRONMENT: production
+      PAYMENTS_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_payments"
+      PAYMENTS_IDENTITY_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_identity"
+      PAYMENTS_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      PAYMENTS_IDENTITY_ISSUER: jboot-identity
+      PAYMENTS_SERVICE_AUDIENCE: svc:payments
+      PAYMENTS_CALLER_ALLOWLIST: platform-api
+      PAYMENTS_OUTBOX_MODE: log
+      PAYMENTS_PROVIDER_TIMEOUT: 8s
+      PAYMENTS_INFINITEPAY_BASE_URL: https://api.checkout.infinitepay.io
+      PAYMENTS_PUBLIC_BASE_URL: https://${JBOOT_PAYMENTS_HOST:?}
+      PAYMENTS_OTLP_ENDPOINT: ${JBOOT_OTLP_HTTP_ENDPOINT:-}
+    networks: [edge, data, observability]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  payments-worker:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/payments:${PAYMENTS_TAG:-${JBOOT_TAG:?}}
+    entrypoint: ["/usr/local/bin/payments-worker"]
+    environment: *payments-env
+    networks: [data, observability]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  juridico-data:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/juridico-data:${JURIDICO_DATA_TAG:-${JBOOT_TAG:?}}
+    command: ["uvicorn", "juridico_data.app:app", "--host", "0.0.0.0", "--port", "8030", "--proxy-headers"]
+    environment:
+      JURIDICO_DATA_DATAJUD_API_KEY: ${JURIDICO_DATA_DATAJUD_API_KEY:?}
+      JURIDICO_DATA_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      JURIDICO_DATA_IDENTITY_ISSUER: jboot-identity
+    networks: [data]
+
+  juridico-worker:
+    <<: *defaults
+    image: ${JBOOT_REGISTRY:?}/juridico-worker:${JURIDICO_WORKER_TAG:-${JBOOT_TAG:?}}
+    command: ["python", "-m", "src.workers.main"]
+    environment:
+      JBOOT_WORKER_API_PORT: 8020
+      TEMPORAL_ADDRESS: temporal:7233
+      JBOOT_JURIDICO_DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/jboot_juridico_advocacia_dev"
+      JBOOT_IDENTITY_JWT_SECRET: ${JBOOT_IDENTITY_JWT_SECRET:?}
+      JBOOT_IDENTITY_SERVICE_URL: http://identity-api:8000
+      JBOOT_PLATFORM_API_URL: http://platform-api:8010
+      JBOOT_JURIDICO_WORKER_INTERNAL_SECRET: ${JBOOT_JURIDICO_WORKER_INTERNAL_SECRET:?}
+      JBOOT_JURIDICO_WORKER_SERVICE_CLIENT_SECRET: ${JBOOT_JURIDICO_WORKER_SERVICE_CLIENT_SECRET:?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${JBOOT_OTLP_HTTP_ENDPOINT:-}
+    networks: [data, observability]
+    shm_size: 512m
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      temporal: { condition: service_started }
+
+networks:
+  # Rede do proxy: so servicos com rota publica.
+  edge:
+  # Bancos e servicos internos; sem saida restrita porque APIs chamam
+  # provedores externos (IA, DataJud, InfinitePay, SMTP).
+  data:
+  # Conversor de PDF isolado, sem acesso a internet (igual ao dev).
+  pdf:
+    internal: true
+  # Rede do stack ops-jboot-observability (compose proprio). Subir o stack de
+  # observabilidade antes deste, ou criar a rede vazia:
+  #   docker network create jboot-observability
+  observability:
+    name: jboot-observability
+    external: true
+
+volumes:
+  postgres-data:
+  valkey-data:
+  minio-data:
+  caddy-data:
+  caddy-config:

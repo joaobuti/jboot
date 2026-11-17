@@ -1,0 +1,66 @@
+import {
+  Autoformat,
+  BlockQuote,
+  Bold,
+  ClassicEditor,
+  Essentials,
+  Heading,
+  Indent,
+  Italic,
+  Link,
+  List,
+  MediaEmbed,
+  Paragraph,
+  PasteFromOffice,
+  Table,
+  TableToolbar,
+  TextTransformation,
+  type EditorConfig,
+} from "ckeditor5";
+
+import "ckeditor5/ckeditor5.css";
+
+export { ClassicEditor };
+
+export const jbootClassicEditorConfig = {
+  licenseKey: "GPL",
+  plugins: [
+    Autoformat,
+    BlockQuote,
+    Bold,
+    Essentials,
+    Heading,
+    Indent,
+    Italic,
+    Link,
+    List,
+    MediaEmbed,
+    Paragraph,
+    PasteFromOffice,
+    Table,
+    TableToolbar,
+    TextTransformation,
+  ],
+  toolbar: [
+    "undo",
+    "redo",
+    "|",
+    "heading",
+    "|",
+    "bold",
+    "italic",
+    "link",
+    "|",
+    "bulletedList",
+    "numberedList",
+    "outdent",
+    "indent",
+    "|",
+    "blockQuote",
+    "insertTable",
+    "mediaEmbed",
+  ],
+  table: {
+    contentToolbar: ["tableColumn", "tableRow", "mergeTableCells"],
+  },
+} satisfies EditorConfig;

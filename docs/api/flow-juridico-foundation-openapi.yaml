@@ -1,0 +1,351 @@
+openapi: 3.1.0
+info:
+  title: Flow Juridico Foundation API
+  version: 1.0.0
+  description: Contrato aprovado no human gate da ADR 015 em 2026-10-13.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+paths:
+  /kanban/customers:
+    get:
+      operationId: listFlowCustomers
+      summary: Lista clientes visiveis nos escritorios do operador
+      description: Exige flow:customers:read ou flow:admin; busca por documento nunca revela cliente fora da visibilidade.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: search
+          in: query
+          schema: { type: string, maxLength: 120 }
+      responses:
+        '200':
+          description: Pagina de clientes sem campos fiscais do PDV
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerPage' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { description: Limite de buscas por operador excedido }
+    post:
+      operationId: createFlowCustomer
+      summary: Cria cliente mestre e vincula escritorios autorizados
+      description: Exige flow:customers:write ou flow:admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerWrite' }
+      responses:
+        '201':
+          description: Cliente criado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerDetail' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /kanban/customers/{customerId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    get:
+      operationId: getFlowCustomer
+      description: Exige flow:customers:read ou flow:admin; outro tenant/escritorio recebe 404.
+      responses:
+        '200':
+          description: Cliente visivel
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      operationId: updateFlowCustomer
+      description: Exige flow:customers:write ou flow:admin; alterar escritorios exige flow:admin e motivo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerPatch' }
+      responses:
+        '200':
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /kanban/customers/{customerId}/cards:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+    get:
+      operationId: listVisibleCustomerCards
+      responses:
+        '200':
+          description: Cards visiveis, sem revelar cards de outro escritorio
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CustomerCard' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      operationId: createCardFromCustomer
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCardFromCustomer' }
+      responses:
+        '201':
+          description: Card criado
+          content: { application/json: { schema: { $ref: '#/components/schemas/CardCommandResult' } } }
+        '200':
+          description: Replay devolve o mesmo card
+          content: { application/json: { schema: { $ref: '#/components/schemas/CardCommandResult' } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: WIP, ACL ou conflito de idempotencia }
+  /kanban/customers/{customerId}/cards/{cardId}:
+    parameters:
+      - $ref: '#/components/parameters/CustomerId'
+      - name: cardId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      operationId: linkExistingCardToCustomer
+      summary: Vincula cliente visivel a card existente sob a mesma policy de escritorio e ACL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LinkExistingCard' }
+      responses:
+        '200': { description: Vinculo criado ou substituido }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /kanban/settings/google-drive:
+    get:
+      operationId: getGoogleDriveConfiguration
+      summary: Retorna configuracao sem credencial
+      responses:
+        '200':
+          description: Configuracao sanitizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriveConfiguration' }
+    put:
+      operationId: putGoogleDriveConfiguration
+      summary: Grava referencia de segredo write-only e configuracao
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriveConfigurationWrite' }
+      responses:
+        '200':
+          description: Configuracao sanitizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriveConfiguration' }
+  /kanban/settings/google-drive/test:
+    post:
+      operationId: testGoogleDriveConfiguration
+      responses:
+        '200': { description: Teste sem PII concluido }
+        '422': { description: Credencial ou pasta invalida, erro sanitizado }
+  /kanban/document-syncs:
+    get:
+      operationId: getDocumentSyncOperations
+      responses:
+        '200':
+          description: Metricas agregadas e DLQ limitada, sem PII
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentSyncOperations' }
+  /kanban/document-syncs/{syncId}/reprocess:
+    post:
+      operationId: reprocessDocumentSync
+      parameters:
+        - name: syncId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '202': { description: Reprocessamento idempotente aceito }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Forbidden: { description: Scope insuficiente }
+    NotFound: { description: Inexistente ou fora do tenant/escritorio }
+    ValidationError: { description: Entrada invalida }
+  schemas:
+    CustomerSummary:
+      type: object
+      required: [id, name, status, officeIds]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        maskedDocumentNumber: { type: [string, 'null'] }
+        status: { type: string }
+        officeIds:
+          type: array
+          items: { type: string, format: uuid }
+    CustomerDetail:
+      allOf:
+        - $ref: '#/components/schemas/CustomerSummary'
+        - type: object
+          properties:
+            email: { type: [string, 'null'], format: email }
+            phone: { type: [string, 'null'] }
+            juridico: { type: object, additionalProperties: false }
+    CustomerPage:
+      type: object
+      required: [data, page, pageSize, total]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/CustomerSummary' } }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CustomerWrite:
+      type: object
+      additionalProperties: false
+      required: [name, officeIds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        documentNumber: { type: [string, 'null'], pattern: '^[0-9. -]{11,14}$' }
+        email: { type: [string, 'null'], format: email }
+        phone: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        officeIds: { type: array, minItems: 1, uniqueItems: true, items: { type: string, format: uuid } }
+        officeLinkReason: { type: string, minLength: 10, maxLength: 500 }
+        juridico: { $ref: '#/components/schemas/CustomerJuridicoWrite' }
+    CustomerPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        documentNumber: { type: [string, 'null'], pattern: '^[0-9. -]{11,14}$' }
+        email: { type: [string, 'null'], format: email }
+        phone: { type: [string, 'null'] }
+        status: { type: string, enum: [active, inactive] }
+        officeIds: { type: array, minItems: 1, uniqueItems: true, items: { type: string, format: uuid } }
+        officeLinkReason: { type: string, minLength: 10, maxLength: 500 }
+        juridico: { $ref: '#/components/schemas/CustomerJuridicoWrite' }
+    CustomerJuridicoWrite:
+      type: object
+      additionalProperties: false
+      properties:
+        dataNascimento: { type: [string, 'null'] }
+        nacionalidade: { type: [string, 'null'], maxLength: 80 }
+        estadoCivil: { type: [string, 'null'], maxLength: 40 }
+        profissao: { type: [string, 'null'], maxLength: 120 }
+        rgNumero: { type: [string, 'null'], maxLength: 40 }
+        rgOrgaoEmissor: { type: [string, 'null'], maxLength: 120 }
+        rgUf: { type: [string, 'null'], minLength: 2, maxLength: 2 }
+        nomeMae: { type: [string, 'null'], maxLength: 200 }
+        numeroBeneficio: { type: [string, 'null'], maxLength: 80 }
+        especieBeneficio: { type: [string, 'null'], maxLength: 80 }
+        bancoPagamento: { type: [string, 'null'], maxLength: 120 }
+        hipossuficienciaDeclarada: { type: boolean }
+        observacoes: { type: [string, 'null'], maxLength: 2000 }
+    CreateCardFromCustomer:
+      type: object
+      additionalProperties: false
+      required: [boardId, columnId, officeId, title]
+      properties:
+        boardId: { type: string, format: uuid }
+        columnId: { type: string, format: uuid }
+        officeId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 200 }
+    LinkExistingCard:
+      type: object
+      additionalProperties: false
+      required: [boardId]
+      properties:
+        boardId: { type: string, format: uuid }
+    CustomerCard:
+      type: object
+      required: [id, boardId, boardColumnId, title, status]
+      properties:
+        id: { type: string, format: uuid }
+        boardId: { type: string, format: uuid }
+        boardColumnId: { type: string, format: uuid }
+        officeId: { type: [string, 'null'], format: uuid }
+        title: { type: string }
+        status: { type: string }
+    CardCommandResult:
+      type: object
+      required: [cardId, replay]
+      properties:
+        cardId: { type: string, format: uuid }
+        replay: { type: boolean }
+    DriveConfiguration:
+      type: object
+      required: [status, credentialMode, rootFolderId, hasCredential]
+      properties:
+        status: { type: string, enum: [inactive, active, paused, invalid] }
+        credentialMode: { type: string, enum: [oauth, service_account] }
+        rootFolderId: { type: string }
+        hasCredential: { type: boolean }
+        lastTestedAt: { type: [string, 'null'], format: date-time }
+        lastSuccessAt: { type: [string, 'null'], format: date-time }
+        lastErrorCode: { type: [string, 'null'] }
+    DriveConfigurationWrite:
+      type: object
+      additionalProperties: false
+      required: [credentialMode, rootFolderId]
+      properties:
+        credentialMode: { type: string, enum: [oauth] }
+        secretRef:
+          type: string
+          pattern: '^env:[A-Z][A-Z0-9_]{2,127}$'
+          description: Obrigatoria na configuracao inicial; omitida preserva a referencia existente.
+        rootFolderId: { type: string, pattern: '^[A-Za-z0-9_-]+$' }
+        status: { type: string, enum: [inactive, active, paused], default: inactive }
+    DocumentSyncOperations:
+      type: object
+      required: [summary, failed]
+      properties:
+        summary:
+          type: object
+          required: [pending, syncing, synced, retrying, failed]
+          properties:
+            pending: { type: integer, minimum: 0 }
+            syncing: { type: integer, minimum: 0 }
+            synced: { type: integer, minimum: 0 }
+            retrying: { type: integer, minimum: 0 }
+            failed: { type: integer, minimum: 0 }
+            oldestPendingSeconds: { type: [integer, 'null'], minimum: 0 }
+        failed:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [id, documentId, documentVersion, updatedAt]
+            properties:
+              id: { type: string, format: uuid }
+              documentId: { type: string, format: uuid }
+              documentVersion: { type: integer, minimum: 1 }
+              errorCode: { type: [string, 'null'] }
+              updatedAt: { type: string, format: date-time }

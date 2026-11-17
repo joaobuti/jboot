@@ -1,0 +1,17 @@
+{
+  "_provenance": {
+    "source": "POST https://api.checkout.infinitepay.io/payment_check",
+    "captured_at": "2026-10-04",
+    "environment": "production_api_controlled_test",
+    "consulted_identifier": "order_nsu and merchant handle redacted",
+    "request_summary": "handle and order_nsu supplied; transaction_nsu and slug unavailable",
+    "http_status": 200,
+    "sanitization": [
+      "merchant handle omitted",
+      "order_nsu omitted"
+    ]
+  },
+  "response": {
+    "success": false
+  }
+}

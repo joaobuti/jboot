@@ -1,0 +1,73 @@
+schema_version: "1.0.0"
+execution_id: "20261015-ai-gateway-agents-ui-v1"
+date: "2026-10-15"
+mode: implementation
+status: partial
+runtime: codex-desktop
+model: gpt-5
+revision: resolved_by_ci
+target_project: implementations/svc-jboot-ai-gateway
+target_module: implementations/app-jboot-next-platform/modules/kanban
+scope_paths:
+  - implementations/svc-jboot-ai-gateway/src/ai/agents
+  - implementations/svc-jboot-ai-gateway/src/ai/crypto/agent-prompt-crypto.service.ts
+  - implementations/svc-jboot-ai-gateway/src/auth
+  - implementations/app-jboot-next-platform/src/lib/ai-gateway-api.ts
+  - implementations/app-jboot-next-platform/src/modules/kanban/components/ai
+  - implementations/app-jboot-next-platform/src/app/(with-layout)/flow/configuracoes/ia
+  - docker/postgres/init/073_ai_gateway_agents.sql
+  - docs/api/kanban-sprint-10-12-openapi.yaml
+  - tools/ai/api-graph.yaml
+instruction_sources:
+  - AGENTS.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+instruction_set_sha256: "6ce29d51ee74ab994d56f61516aab11725a9b7685dc01d39e296e129e849e73e"
+context_sha256:
+  implementations/svc-jboot-ai-gateway/AI_CONTEXT.md: "6b9d33fa302d75a36ac4b538317c9fc20ced0cd71dc8ea9d12556e7cd50f4135"
+  implementations/app-jboot-next-platform/AI_CONTEXT.md: "d62d4d1ab39874bdde76cb81f96d12fb971aa3566ce3d25299b1120714db49ff"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "e74a4e3bd972a25512222644835c52347b8009aca187f5f7c561c38a5c6169dd"
+agents:
+  - implementations/svc-jboot-ai-gateway/agents/ai-gateway-backend.md
+  - docs/agents/orchestration/ui-ux.md
+skills:
+  - implementations/svc-jboot-ai-gateway/skills/byok-credential-vault.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: O usuario aprovou agentes cadastrados manualmente com prompt versionado e autorizou implementar frontend e menu.
+security_review:
+  status: passed
+  evidence:
+    - tenant owner e modulo sao derivados exclusivamente do JWT
+    - scopes de credenciais e agentes sao independentes por recurso
+    - prompts sao write-only e cifrados com AES-256-GCM e AAD contextual
+    - atualizacao de prompt cria versao imutavel e transacional
+    - frontend nao envia contexto de autorizacao no payload
+    - npm audit sem vulnerabilidades
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - 9 testes do gateway passaram dentro do container
+  - 103 testes do frontend passaram dentro do container
+  - type-check lint e builds passaram dentro do container
+  - health readiness e as duas paginas responderam HTTP 200
+  - API Contract Graph resolveu 8 chamadas do frontend para o gateway e passou sem erros
+  - AI-first conformance passou com 39 cenarios e 56 testes
+  - npm audit --omit=dev reportou zero vulnerabilidades
+result: >-
+  Cofre BYOK, cadastro e versionamento de agentes, cliente tipado, telas de
+  credenciais e agentes e menu Configuracoes IA estao implementados. Sprint 11
+  permanece parcial porque executor, ledger e providers reais ainda nao foram
+  implementados. O Architecture Graph registry/gate ainda nao esta disponivel e
+  nao e declarado sincronizado.

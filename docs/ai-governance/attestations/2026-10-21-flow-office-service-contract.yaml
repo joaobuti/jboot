@@ -1,0 +1,76 @@
+schema_version: "1.0.0"
+execution_id: "20261021-flow-office-service-contract"
+date: "2026-10-21"
+mode: implementation
+status: success
+runtime: claude-code-desktop
+model: claude-opus-5-5
+revision: resolved_by_ci
+target_project: implementations/bff-jboot-platform
+target_module: modules/kanban
+scope_paths:
+  - docker/postgres/init/089_kanban_office_service_contracts.sql
+  - docs/ai-governance/attestations/2026-10-21-flow-office-service-contract.yaml
+  - docs/api/flow-office-service-contract-openapi.yaml
+  - docs/architecture-graph/registry.yaml
+  - docs/product/flow-office-service-contract-sprints.md
+  - implementations/app-jboot-next-platform
+  - implementations/bff-jboot-platform
+instruction_sources:
+  - AGENTS.md
+  - .claude/CLAUDE.md
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/architect.md
+  - docs/agents/orchestration/ui-ux.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+instruction_set_sha256: "774c9f51a0ca67b4e29f93ed0f529322bc66e3986dc122561ac71e937450c714"
+context_sha256:
+  implementations/bff-jboot-platform/modules/kanban/AI_CONTEXT.md: "2b1773a3733195bc0a9156013916e766662e236eb311cebaf74bfa3801972f71"
+  implementations/bff-jboot-platform/AI_CONTEXT.md: "85d18aedb84bb3aaec0bfb3e1e1d5533fee9494bed084624a1646fb36981e2e2"
+  implementations/app-jboot-next-platform/modules/kanban/AI_CONTEXT.md: "74fe652e7bf49aeb242f78b13c21d121f08bdae016009056216c49ed6fea15a5"
+agents:
+  - docs/agents/orchestration/product-owner.md
+  - docs/agents/orchestration/product-engineer.md
+  - docs/agents/orchestration/ui-ux.md
+  - implementations/bff-jboot-platform/modules/kanban/agents/kanban-board-domain.md
+  - implementations/app-jboot-next-platform/agents/frontend-next-typescript.md
+skills:
+  - implementations/app-jboot-next-platform/skills/platform-crud-ui.md
+  - implementations/app-jboot-next-platform/skills/api-client.md
+  - docs/skills/ai-first-governance/SKILL.md
+  - docs/skills/security-checklist/SKILL.md
+human_approval:
+  status: approved
+  evidence: >-
+    Em 2026-10-21 o usuario pediu a aba "Contrato Servicos" no cadastro do
+    escritorio com editor estilo Word do Velzon; escolheu Quill (licenca BSD),
+    um modelo por escritorio e a entrega editor + tags + previa; definiu tags
+    livres [[TAG]] (o cliente ajusta o prompt quando o modelo muda) e todos os
+    valores vindos da extracao da IA, ambos alinhados e aceitos pelo cliente.
+security_review:
+  status: passed
+  evidence:
+    - docs/product/flow-office-service-contract-sprints.md
+    - docs/api/flow-office-service-contract-openapi.yaml
+  open_items: 0
+measurements:
+  status: not_exposed
+  prompt_tokens: null
+  completion_tokens: null
+  cost: null
+  latency_ms: null
+validations:
+  - migration 089 aplicada no banco de dev
+  - BFF no container - type-check, lint, build e 622 testes (620 passam, 2 ignorados ja existentes)
+  - Web no container - type-check, lint, 131 testes e next build
+  - navegador - aba, editor Quill, Inserir tag, lista de tags e previa; API 404 e 422
+result: >-
+  Sprint 1 do contrato de servicos por escritorio: aba Contrato Servicos com
+  editor Quill, tags [[TAG]] livres detectadas, versoes imutaveis por
+  escritorio com HTML limpo no servidor, historico e previa.

@@ -1,0 +1,43 @@
+# Pipeline GitLab CI/CD do monorepo JBoot.
+#
+# Cada servico de implementations/* tem seu proprio .gitlab-ci.yml, incluido
+# abaixo, com rules por path para so rodar quando aquele servico for afetado
+# (docs/deploy.md, secao "Pipeline minimo").
+#
+# Escopo atual: site-jboot-landing, app-jboot-identity-admin, bff-jboot-identity
+# (primeiro lote de deploy para producao/staging na Configr). Os demais servicos
+# (platform-web, platform-api, juridico-api, juridico-worker, fiscal-service)
+# ganham pipeline proprio quando forem para a Configr.
+
+stages:
+  - verify
+  - build
+  - deploy-staging
+  - smoke-staging
+  - deploy-production
+  - smoke-production
+
+ai-governance:
+  stage: verify
+  image: python:3.13-alpine
+  before_script:
+    - apk add --no-cache bash grep make git
+    - python3 -m pip install --disable-pip-version-check -r tools/ai/requirements.txt
+  script:
+    - make ai-check
+    - if [ -n "${CI_MERGE_REQUEST_DIFF_BASE_SHA:-}" ]; then python3 tools/ai/diff-preflight.py --base "$CI_MERGE_REQUEST_DIFF_BASE_SHA"; fi
+    - make ai-evidence
+  artifacts:
+    when: always
+    paths:
+      - docs/ai-governance/evidence/
+  rules:
+    - when: always
+
+include:
+  - local: implementations/site-jboot-landing/.gitlab-ci.yml
+  - local: implementations/app-jboot-identity-admin/.gitlab-ci.yml
+  - local: implementations/bff-jboot-identity/.gitlab-ci.yml
+  # Deploy no VPS Hostinger (docker compose); convive com os jobs da Configr
+  # ate a virada de DNS (docs/product/hostinger-vps-hosting-sprints.md, S6).
+  - local: deploy/vps/vps.gitlab-ci.yml

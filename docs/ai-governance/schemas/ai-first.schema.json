@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jboot.dev/schemas/ai-first.schema.json",
+  "title": "JBoot AI-first engineering conformance profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "profile_id", "profile_version", "status", "owner",
+    "last_review", "review_due", "claims", "scope", "thresholds",
+    "measurement_policy", "artifact_governance", "required_controls",
+    "runtime_adapters", "references"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0.0"},
+    "profile_id": {"type": "string", "minLength": 1},
+    "profile_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "status": {"enum": ["draft", "candidate", "conformant", "nonconformant"]},
+    "owner": {"type": "string", "minLength": 1},
+    "approved_by": {"enum": ["human", "pending"]},
+    "last_review": {"type": "string", "format": "date"},
+    "review_due": {"type": "string", "format": "date"},
+    "claims": {
+      "type": "object",
+      "required": ["engineering", "product_runtime"],
+      "properties": {
+        "engineering": {"$ref": "#/$defs/claim"},
+        "product_runtime": {"$ref": "#/$defs/claim"}
+      }
+    },
+    "scope": {"type": "object", "required": ["included", "excluded"]},
+    "thresholds": {"type": "object", "minProperties": 1},
+    "measurement_policy": {"type": "object", "required": ["allowed_statuses", "zero_requires_status"]},
+    "artifact_governance": {"type": "object", "required": ["default_review_interval_days", "ownership_rules"]},
+    "required_controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/control"}
+    },
+    "runtime_adapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "runtime"],
+        "properties": {"path": {"type": "string"}, "runtime": {"type": "string"}}
+      }
+    },
+    "references": {"type": "array", "items": {"type": "object", "required": ["id", "url"]}}
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["statement", "status"],
+      "properties": {
+        "statement": {"type": "string"},
+        "status": {"enum": ["planned", "candidate", "conformant", "nonconformant"]},
+        "evidence": {"type": "string"},
+        "evidence_command": {"type": "string"}
+      },
+      "anyOf": [{"required": ["evidence"]}, {"required": ["evidence_command"]}]
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "blocking"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^AIF-[A-Z]+-[0-9]{3}$"},
+        "title": {"type": "string", "minLength": 1},
+        "blocking": {"type": "boolean"}
+      }
+    }
+  }
+}
